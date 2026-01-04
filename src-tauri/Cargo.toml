@@ -30,7 +30,7 @@ tauri-plugin-window-state = "2"
 tauri-plugin-autostart = "2"
 
 # Git operations (Phase 4)
-# git2 = "0.19"
+git2 = "0.19"
 
 # HTTP client for GitHub/Jira (Phase 5, 6)
 # reqwest = { version = "0.12", features = ["json"] }

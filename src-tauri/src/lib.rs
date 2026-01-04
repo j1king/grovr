@@ -16,6 +16,12 @@ use commands::settings::{
     set_skip_open_ide_confirm, set_theme,
 };
 use commands::projects::{add_project, get_projects, remove_project, update_project};
+use commands::git::{
+    get_worktrees, create_worktree, create_worktree_existing_branch, remove_worktree,
+    prune_worktrees, get_worktree_status, get_branches, get_current_branch, get_default_branch,
+    delete_branch, git_fetch, git_pull, open_ide, open_in_finder, open_terminal,
+    copy_paths_to_worktree,
+};
 
 fn setup_window_effects(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let window = app.get_webview_window("main").expect("no main window");
@@ -79,6 +85,26 @@ pub fn run() {
             add_project,
             update_project,
             remove_project,
+            // Git - Worktrees
+            get_worktrees,
+            create_worktree,
+            create_worktree_existing_branch,
+            remove_worktree,
+            prune_worktrees,
+            get_worktree_status,
+            // Git - Branches
+            get_branches,
+            get_current_branch,
+            get_default_branch,
+            delete_branch,
+            // Git - Operations
+            git_fetch,
+            git_pull,
+            // IDE/File
+            open_ide,
+            open_in_finder,
+            open_terminal,
+            copy_paths_to_worktree,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
