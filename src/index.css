@@ -234,16 +234,16 @@ html, body, #root {
 }
 
 .settings-titlebar {
-  @apply flex-shrink-0 flex items-start justify-end px-2 pt-2;
+  @apply flex-shrink-0;
   height: var(--titlebar-height);
 }
 
 .settings-back {
-  @apply flex items-center gap-1 px-2 py-1 text-xs font-medium transition-colors rounded-md;
+  @apply w-full flex items-center gap-2 px-2.5 py-1.5 mb-1 rounded-md text-xs font-medium transition-all;
   color: hsl(var(--muted-foreground));
 }
 .settings-back:hover {
-  background: hsl(var(--secondary));
+  background: hsl(var(--accent));
   color: hsl(var(--foreground));
 }
 
@@ -277,6 +277,11 @@ html, body, #root {
   height: var(--titlebar-height);
 }
 
+.settings-content-title {
+  @apply text-lg font-semibold pb-3 mb-3;
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+}
+
 .settings-content-wrapper {
   @apply flex justify-center px-4 py-4;
 }
@@ -291,6 +296,10 @@ html, body, #root {
 .settings-group {
   @apply space-y-2 pt-3;
   border-top: 1px solid hsl(var(--border));
+}
+.settings-group.first {
+  @apply pt-0;
+  border-top: none;
 }
 
 .settings-item {
@@ -448,7 +457,7 @@ html, body, #root {
 }
 
 .integration-help-link {
-  @apply inline-flex items-center gap-1 text-[10px] text-muted-foreground transition-colors;
+  @apply flex items-center justify-end gap-1 text-[10px] text-muted-foreground transition-colors;
 }
 .integration-help-link:hover {
   color: hsl(var(--foreground));
@@ -514,11 +523,6 @@ html, body, #root {
 .integration-help {
   @apply pt-2;
 }
-.integration-help-link {
-  @apply inline-flex items-center gap-1 text-sm transition-colors;
-  color: hsl(var(--muted-foreground));
-}
-.integration-help-link:hover { color: hsl(var(--foreground)); }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 8px; height: 8px; }

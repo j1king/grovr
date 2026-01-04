@@ -26,6 +26,8 @@ tauri-plugin-dialog = "2"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-os = "2"
 tauri-plugin-shell = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-autostart = "2"
 
 # Git operations (Phase 4)
 # git2 = "0.19"

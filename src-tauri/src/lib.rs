@@ -6,18 +6,22 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 #[cfg(target_os = "windows")]
 use window_vibrancy::apply_mica;
 
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
+mod commands;
+mod types;
+
+use commands::settings::{
+    get_settings, init_settings, set_clipboard_parse_pattern, set_copy_paths,
+    set_default_worktree_template, set_fetch_before_create, set_ide, set_last_used_project,
+    set_launch_at_startup, set_onboarding_completed, set_refresh_interval_minutes,
+    set_skip_open_ide_confirm, set_theme,
+};
+use commands::projects::{add_project, get_projects, remove_project, update_project};
 
 fn setup_window_effects(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let window = app.get_webview_window("main").expect("no main window");
 
     #[cfg(target_os = "macos")]
     {
-        // Fallback to vibrancy for older macOS versions
-        // Liquid Glass plugin handles macOS 26+ automatically
         let _ = apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, None);
     }
 
@@ -32,18 +36,50 @@ fn setup_window_effects(app: &tauri::App) -> Result<(), Box<dyn std::error::Erro
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        // Plugins
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_window_state::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(tauri_plugin_liquid_glass::init())
+        // Setup
         .setup(|app| {
+            // Initialize settings state
+            let settings_state = init_settings(app.handle());
+            app.manage(settings_state);
+
+            // Apply window effects
             setup_window_effects(app)?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![greet])
+        // Commands
+        .invoke_handler(tauri::generate_handler![
+            // Settings
+            get_settings,
+            set_ide,
+            set_theme,
+            set_launch_at_startup,
+            set_default_worktree_template,
+            set_copy_paths,
+            set_fetch_before_create,
+            set_clipboard_parse_pattern,
+            set_last_used_project,
+            set_refresh_interval_minutes,
+            set_skip_open_ide_confirm,
+            set_onboarding_completed,
+            // Projects
+            get_projects,
+            add_project,
+            update_project,
+            remove_project,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -20,9 +20,7 @@ export function WorktreeSettings() {
 
   return (
     <div className="settings-section">
-      <h2 className="settings-title">Worktree</h2>
-
-      <div className="settings-group">
+      <div className="settings-group first">
         <div className="settings-item-full">
           <label className="settings-label">Path Template</label>
           <p className="settings-hint">

@@ -5,9 +5,7 @@ export function AppearanceSettings() {
 
   return (
     <div className="settings-section">
-      <h2 className="settings-title">Appearance</h2>
-
-      <div className="settings-group">
+      <div className="settings-group first">
         <div className="settings-item">
           <div className="settings-item-info">
             <label className="settings-label">Mode</label>

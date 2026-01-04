@@ -3,9 +3,7 @@ import { Plus, Trash2, ExternalLink, Check } from 'lucide-react';
 export function GitHubSettings() {
   return (
     <div className="settings-section">
-      <h2 className="settings-title">GitHub</h2>
-
-      <div className="settings-group">
+      <div className="settings-group first">
         <div className="integration-list">
           <div className="integration-card">
             <div className="integration-header">

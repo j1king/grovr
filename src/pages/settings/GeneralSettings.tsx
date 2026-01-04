@@ -7,9 +7,7 @@ export function GeneralSettings() {
 
   return (
     <div className="settings-section">
-      <h2 className="settings-title">General</h2>
-
-      <div className="settings-group">
+      <div className="settings-group first">
         {/* Launch at Startup */}
         <div className="settings-item">
           <div className="settings-item-info">

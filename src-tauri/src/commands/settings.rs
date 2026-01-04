@@ -1,0 +1,158 @@
+use crate::types::{AppSettings, IdeConfig};
+use tauri::State;
+use tauri_plugin_store::StoreExt;
+use std::sync::Mutex;
+
+const STORE_PATH: &str = "settings.json";
+const SETTINGS_KEY: &str = "settings";
+
+pub struct SettingsState(pub Mutex<AppSettings>);
+
+fn load_settings(app: &tauri::AppHandle) -> AppSettings {
+    let store = app.store(STORE_PATH).ok();
+    store
+        .and_then(|s| s.get(SETTINGS_KEY))
+        .and_then(|v| serde_json::from_value(v).ok())
+        .unwrap_or_default()
+}
+
+fn save_settings(app: &tauri::AppHandle, settings: &AppSettings) -> Result<(), String> {
+    let store = app.store(STORE_PATH).map_err(|e| e.to_string())?;
+    store.set(
+        SETTINGS_KEY,
+        serde_json::to_value(settings).map_err(|e| e.to_string())?,
+    );
+    store.save().map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+pub fn init_settings(app: &tauri::AppHandle) -> SettingsState {
+    SettingsState(Mutex::new(load_settings(app)))
+}
+
+#[tauri::command]
+pub fn get_settings(state: State<SettingsState>) -> Result<AppSettings, String> {
+    let settings = state.0.lock().map_err(|e| e.to_string())?;
+    Ok(settings.clone())
+}
+
+#[tauri::command]
+pub fn set_ide(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    ide: IdeConfig,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.ide = Some(ide);
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_theme(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    theme: String,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.theme = theme;
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_launch_at_startup(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.launch_at_startup = Some(enabled);
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_default_worktree_template(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    template: String,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.default_worktree_template = Some(template);
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_copy_paths(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    paths: Vec<String>,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.copy_paths = Some(paths);
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_fetch_before_create(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    enabled: bool,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.fetch_before_create = Some(enabled);
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_clipboard_parse_pattern(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    pattern: String,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.clipboard_parse_pattern = Some(pattern);
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_last_used_project(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    project: String,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.last_used_project = Some(project);
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_refresh_interval_minutes(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    minutes: i32,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.refresh_interval_minutes = minutes;
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_skip_open_ide_confirm(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    skip: bool,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.skip_open_ide_confirm = Some(skip);
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_onboarding_completed(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    completed: bool,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.onboarding_completed = Some(completed);
+    save_settings(&app, &settings)
+}

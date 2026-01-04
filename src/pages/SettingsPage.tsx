@@ -57,17 +57,16 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
     <div className="h-full flex">
       {/* Sidebar */}
       <aside className="settings-sidebar">
-        {/* Titlebar safe area + Back Button */}
-        <div data-tauri-drag-region className="settings-titlebar">
-          <button className="settings-back no-drag" onClick={onBack}>
-            <ArrowLeft size={14} />
-            <span>Back</span>
-          </button>
-        </div>
+        {/* Titlebar safe area */}
+        <div data-tauri-drag-region className="settings-titlebar" />
 
         {/* Navigation */}
         <ScrollArea className="flex-1">
           <nav className="settings-nav">
+            <button className="settings-back no-drag" onClick={onBack}>
+              <ArrowLeft size={14} />
+              <span>Back to App</span>
+            </button>
             {categories.map((category) => (
               <button
                 key={category.id}
@@ -91,6 +90,9 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         <ScrollArea className="flex-1">
           <div className="settings-content-wrapper">
             <div className="settings-content-inner">
+              <h2 className="settings-content-title">
+                {categories.find((c) => c.id === activeCategory)?.label}
+              </h2>
               {renderContent()}
             </div>
           </div>

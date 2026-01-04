@@ -17,9 +17,7 @@ export function IDESettings() {
 
   return (
     <div className="settings-section">
-      <h2 className="settings-title">IDE</h2>
-
-      <div className="settings-group">
+      <div className="settings-group first">
         <div className="settings-item">
           <div className="settings-item-info">
             <label className="settings-label">Default IDE</label>
