@@ -85,8 +85,9 @@ html, body, #root {
 }
 
 .titlebar-title {
-  @apply absolute left-1/2 -translate-x-1/2 text-xs font-medium;
+  @apply absolute left-1/2 -translate-x-1/2 text-xs font-medium cursor-default;
   color: hsl(var(--muted-foreground) / 0.65);
+  -webkit-app-region: drag;
 }
 
 .icon-button-sm {
@@ -178,14 +179,51 @@ html, body, #root {
 
 .worktree-col-branch { @apply flex items-center gap-1.5 flex-1 min-w-0; }
 .worktree-col-description { @apply w-[200px] min-w-0 px-2; }
-.worktree-col-github { @apply w-[85px] flex justify-center flex-shrink-0; }
-.worktree-col-jira { @apply w-[85px] flex justify-center flex-shrink-0; }
+.worktree-col-github { @apply w-[100px] flex justify-center flex-shrink-0; }
+.worktree-col-jira { @apply w-[100px] flex justify-center flex-shrink-0; }
 .worktree-col-actions { @apply relative w-[28px] flex justify-end flex-shrink-0; }
 
-/* Integration links (GitHub PR, Jira Issue) */
-.integration-link {
-  @apply flex items-center gap-1 text-xs transition-colors;
+/* Integration badges (GitHub PR, Jira Issue) */
+.integration-badge-link {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium transition-all cursor-pointer;
+  background: hsl(var(--accent));
   color: hsl(var(--muted-foreground));
+  border: none;
+}
+.integration-badge-link:hover {
+  background: hsl(var(--accent) / 0.8);
+  color: hsl(var(--foreground));
+}
+.integration-badge-link .badge-icon { @apply flex-shrink-0; }
+.integration-badge-link .badge-text { @apply truncate max-w-[65px]; }
+.integration-badge-link .badge-external {
+  @apply flex-shrink-0 overflow-hidden transition-all duration-150;
+  width: 0;
+  opacity: 0;
+}
+.integration-badge-link:hover .badge-external {
+  width: 8px;
+  margin-left: 2px;
+  opacity: 1;
+}
+
+/* Status colors for badges */
+.integration-badge-link.status-open { background: hsl(142 70% 45% / 0.15); color: hsl(142 70% 45%); }
+.integration-badge-link.status-merged { background: hsl(270 70% 60% / 0.15); color: hsl(270 70% 60%); }
+.integration-badge-link.status-closed { background: hsl(0 70% 50% / 0.15); color: hsl(0 70% 50%); }
+.integration-badge-link.status-draft { background: hsl(var(--accent)); color: hsl(var(--muted-foreground)); }
+.integration-badge-link.status-done { background: hsl(142 70% 45% / 0.15); color: hsl(142 70% 45%); }
+.integration-badge-link.status-in-progress { background: hsl(210 90% 55% / 0.15); color: hsl(210 90% 55%); }
+.integration-badge-link.status-todo { background: hsl(var(--accent)); color: hsl(var(--muted-foreground)); }
+.integration-badge-link.status-link-only { background: hsl(var(--secondary)); color: hsl(var(--muted-foreground)); }
+
+/* Legacy integration-link (for backwards compat) */
+.integration-link {
+  @apply flex items-center gap-1 text-xs transition-colors cursor-pointer;
+  color: hsl(var(--muted-foreground));
+  background: none;
+  border: none;
+  padding: 0;
 }
 .integration-link:hover {
   color: hsl(var(--foreground));
@@ -196,6 +234,13 @@ html, body, #root {
 
 .worktree-actions-dropdown {
   @apply absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[160px];
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+}
+
+.worktree-actions-dropdown-portal {
+  @apply fixed py-1 rounded-lg shadow-lg min-w-[160px];
+  z-index: 9999;
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
 }
@@ -356,12 +401,20 @@ html, body, #root {
 .settings-title { @apply text-base font-semibold; }
 
 .settings-group {
-  @apply space-y-1.5 pt-3;
+  @apply space-y-2 pt-4;
   border-top: 1px solid hsl(var(--border));
 }
 .settings-group.first {
   @apply pt-0;
   border-top: none;
+}
+.settings-group-title {
+  @apply text-xs font-semibold;
+  color: hsl(var(--foreground));
+}
+.settings-group-description {
+  @apply text-[10px] leading-relaxed mb-2;
+  color: hsl(var(--muted-foreground));
 }
 
 .settings-item {
@@ -504,12 +557,17 @@ html, body, #root {
   background: hsl(var(--secondary));
   border: 1px solid hsl(var(--border));
 }
+.integration-card-warning {
+  border-color: hsl(45 90% 50% / 0.3);
+  background: hsl(45 90% 50% / 0.05);
+}
 
 .integration-header {
   @apply flex-1 min-w-0;
 }
-.integration-info { @apply flex items-center gap-2; }
-.integration-name { @apply text-xs font-medium; }
+.integration-info { @apply flex items-center gap-2 min-w-0; }
+.integration-info.flex-1 { @apply flex-col items-start gap-0; }
+.integration-name { @apply text-xs font-medium truncate; }
 .integration-badge {
   @apply px-1.5 py-0.5 text-[9px] font-medium rounded;
   background: hsl(var(--accent));
@@ -520,6 +578,7 @@ html, body, #root {
   @apply flex items-center gap-0.5 text-[10px] font-medium;
 }
 .integration-status.connected { color: hsl(142 70% 45%); }
+.integration-status.partial { color: hsl(45 90% 50%); }
 
 .integration-token {
   @apply text-[10px] font-mono text-muted-foreground;
@@ -558,6 +617,8 @@ html, body, #root {
 }
 .btn-secondary-sm:hover { background: hsl(var(--accent)); }
 .btn-secondary-sm:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary-sm.btn-danger-text { color: hsl(var(--destructive)); }
+.btn-secondary-sm.btn-danger-text:hover { background: hsl(var(--destructive) / 0.1); }
 
 .btn-primary-sm {
   @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors;

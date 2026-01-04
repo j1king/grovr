@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trash2, ExternalLink, Check, Loader2 } from 'lucide-react';
+import { ExternalLink, Check, Loader2 } from 'lucide-react';
 import * as api from '@/lib/api';
 import type { GitHubConfig } from '@/lib/api';
 
@@ -39,6 +39,8 @@ export function GitHubSettings() {
 
     try {
       const testConfig: GitHubConfig = {
+        id: crypto.randomUUID(),
+        name: configType === 'enterprise' ? 'GitHub Enterprise' : 'GitHub',
         config_type: configType,
         token: token.trim(),
         host: configType === 'enterprise' ? host.trim() : undefined,
@@ -63,7 +65,10 @@ export function GitHubSettings() {
     setSaving(true);
 
     try {
+      const configId = config?.id || crypto.randomUUID();
       const newConfig: GitHubConfig = {
+        id: configId,
+        name: configType === 'enterprise' ? 'GitHub Enterprise' : 'GitHub',
         config_type: configType,
         token: token.trim(),
         host: configType === 'enterprise' ? host.trim() : undefined,
@@ -78,6 +83,7 @@ export function GitHubSettings() {
       }
 
       newConfig.username = result.username;
+      newConfig.name = result.username || newConfig.name;
       await api.setGitHubConfig(newConfig);
       setConfig(newConfig);
       setShowForm(false);
@@ -129,29 +135,25 @@ export function GitHubSettings() {
       <div className="settings-group first">
         {/* Existing connection */}
         {config && !showForm && (
-          <div className="integration-list">
-            <div className="integration-card">
-              <div className="integration-header">
-                <div className="integration-info">
-                  <span className="integration-name">
-                    {config.username || (config.config_type === 'enterprise' ? 'Enterprise' : 'Personal')}
-                  </span>
-                  <span className="integration-badge">
-                    {config.config_type === 'enterprise' ? config.host : 'github.com'}
-                  </span>
-                </div>
-                <div className="integration-status connected">
-                  <Check size={10} />
-                  Connected
-                </div>
-              </div>
-              <div className="integration-token">{maskToken(config.token)}</div>
-              <div className="integration-actions">
-                <button className="btn-ghost btn-danger" onClick={handleRemove}>
-                  <Trash2 size={12} />
-                </button>
-              </div>
+          <div className="integration-card">
+            <div className="integration-info flex-1 min-w-0">
+              <span className="integration-name">
+                {config.username || (config.config_type === 'enterprise' ? 'Enterprise' : 'Personal')}
+              </span>
+              <span className="integration-token">
+                {config.config_type === 'enterprise' ? config.host : 'github.com'}
+              </span>
             </div>
+            <div className="integration-status connected">
+              <Check size={10} />
+              Connected
+            </div>
+            <button
+              className="btn-secondary-sm btn-danger-text"
+              onClick={handleRemove}
+            >
+              Remove
+            </button>
           </div>
         )}
 
@@ -199,7 +201,7 @@ export function GitHubSettings() {
               />
               <div className="flex justify-end mt-1">
                 <a
-                  href="https://github.com/settings/tokens/new?scopes=repo"
+                  href="https://github.com/settings/tokens/new?scopes=repo&description=Grovr"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="integration-help-link"
@@ -264,16 +266,6 @@ export function GitHubSettings() {
               </button>
             </div>
           </div>
-        )}
-
-        {/* Change account button */}
-        {config && !showForm && (
-          <button
-            className="btn-secondary-sm"
-            onClick={() => setShowForm(true)}
-          >
-            Change Account
-          </button>
         )}
 
       </div>

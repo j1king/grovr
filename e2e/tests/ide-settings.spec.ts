@@ -55,4 +55,53 @@ test.describe('IDE Settings @ide', () => {
     await ideSelect.selectOption('code')
     await expect(ideSelect).toHaveValue('code')
   })
+
+  test('skip confirmation toggle exists', async ({ appPage }) => {
+    // Go to settings > IDE
+    await appPage.locator('[title="Settings"]').click()
+    await appPage.locator('.settings-nav-item').filter({ hasText: 'IDE' }).click()
+
+    // Check skip confirmation toggle exists
+    const skipLabel = appPage.locator('.settings-label').filter({ hasText: 'Skip confirmation' })
+    await expect(skipLabel).toBeVisible()
+
+    // Check toggle exists
+    const toggle = appPage.locator('.toggle input[type="checkbox"]')
+    await expect(toggle).toBeVisible()
+  })
+
+  test('skip confirmation toggle can be changed', async ({ appPage }) => {
+    // Go to settings > IDE
+    await appPage.locator('[title="Settings"]').click()
+    await appPage.locator('.settings-nav-item').filter({ hasText: 'IDE' }).click()
+
+    // Find skip confirmation toggle
+    const settingsItem = appPage.locator('.settings-item').filter({ hasText: 'Skip confirmation' })
+    const checkbox = settingsItem.locator('input[type="checkbox"]')
+
+    // Get initial state
+    const initialChecked = await checkbox.isChecked()
+
+    // Toggle by evaluating and dispatching change event
+    await checkbox.evaluate((el: HTMLInputElement) => {
+      el.checked = !el.checked
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    // Wait for state update
+    await appPage.waitForTimeout(100)
+
+    // Verify it changed
+    const newChecked = await checkbox.isChecked()
+    expect(newChecked).toBe(!initialChecked)
+
+    // Toggle back
+    await checkbox.evaluate((el: HTMLInputElement) => {
+      el.checked = !el.checked
+      el.dispatchEvent(new Event('change', { bubbles: true }))
+    })
+
+    await appPage.waitForTimeout(100)
+    expect(await checkbox.isChecked()).toBe(initialChecked)
+  })
 })

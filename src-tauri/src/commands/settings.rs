@@ -103,13 +103,13 @@ pub fn set_fetch_before_create(
 }
 
 #[tauri::command]
-pub fn set_clipboard_parse_pattern(
+pub fn set_clipboard_parse_patterns(
     app: tauri::AppHandle,
     state: State<SettingsState>,
-    pattern: String,
+    patterns: Vec<String>,
 ) -> Result<(), String> {
     let mut settings = state.0.lock().map_err(|e| e.to_string())?;
-    settings.clipboard_parse_pattern = Some(pattern);
+    settings.clipboard_parse_patterns = Some(patterns);
     save_settings(&app, &settings)
 }
 

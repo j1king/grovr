@@ -1,13 +1,34 @@
 use crate::commands::settings::SettingsState;
-use crate::types::{GitHubConfig, JiraConfig};
+use crate::secure_store;
+use crate::types::{GitHubConfig, GitHubConfigMeta, JiraConfig, JiraConfigMeta};
 use base64::{engine::general_purpose::STANDARD, Engine};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use tauri::State;
 use tauri_plugin_store::StoreExt;
 
 const STORE_PATH: &str = "settings.json";
 const SETTINGS_KEY: &str = "settings";
+
+// Helper to migrate tokens from old settings.json format to keychain
+fn migrate_token_if_needed(app: &tauri::AppHandle, key: &str, token_getter: impl Fn(&Value) -> Option<String>) {
+    // Check if token already exists in keychain
+    if let Ok(Some(_)) = secure_store::get_secret(key) {
+        return; // Already migrated
+    }
+
+    // Try to read from raw settings.json
+    if let Ok(store) = app.store(STORE_PATH) {
+        if let Some(settings_value) = store.get(SETTINGS_KEY) {
+            if let Some(token) = token_getter(&settings_value) {
+                if !token.is_empty() {
+                    let _ = secure_store::store_secret(key, &token);
+                }
+            }
+        }
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ValidateResult {
@@ -19,7 +40,9 @@ pub struct ValidateResult {
 // ============ GitHub Commands ============
 
 #[tauri::command]
-pub fn get_github_config(state: State<SettingsState>) -> Result<Option<GitHubConfig>, String> {
+pub fn get_github_config(
+    state: State<SettingsState>,
+) -> Result<Option<GitHubConfigMeta>, String> {
     let settings = state.0.lock().map_err(|e| e.to_string())?;
     Ok(settings.github_configs.first().cloned())
 }
@@ -30,9 +53,14 @@ pub fn set_github_config(
     state: State<SettingsState>,
     config: GitHubConfig,
 ) -> Result<(), String> {
+    // Store token in secure storage
+    let token_key = secure_store::github_token_key(&config.id);
+    secure_store::store_secret(&token_key, &config.token)?;
+
+    // Store metadata (without token) in settings
     let mut settings = state.0.lock().map_err(|e| e.to_string())?;
-    // Single connection: replace all with one
-    settings.github_configs = vec![config];
+    let meta: GitHubConfigMeta = (&config).into();
+    settings.github_configs = vec![meta];
     save_settings(&app, &settings)
 }
 
@@ -42,6 +70,13 @@ pub fn remove_github_config(
     state: State<SettingsState>,
 ) -> Result<(), String> {
     let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+
+    // Delete token from secure storage
+    for meta in &settings.github_configs {
+        let token_key = secure_store::github_token_key(&meta.id);
+        let _ = secure_store::delete_secret(&token_key); // Ignore errors
+    }
+
     settings.github_configs.clear();
     save_settings(&app, &settings)
 }
@@ -95,9 +130,24 @@ pub async fn validate_github_token(config: GitHubConfig) -> Result<ValidateResul
 // ============ Jira Commands ============
 
 #[tauri::command]
-pub fn get_jira_config(state: State<SettingsState>) -> Result<Option<JiraConfig>, String> {
+pub fn get_jira_config(
+    state: State<SettingsState>,
+) -> Result<Option<JiraConfigMeta>, String> {
     let settings = state.0.lock().map_err(|e| e.to_string())?;
-    Ok(settings.jira_configs.first().cloned())
+    let meta = settings.jira_configs.first().cloned();
+
+    // Check if token exists in keychain
+    if let Some(mut m) = meta {
+        let token_key = secure_store::jira_token_key(&m.host);
+        m.has_token = secure_store::get_secret(&token_key)
+            .ok()
+            .flatten()
+            .map(|t| !t.is_empty())
+            .unwrap_or(false);
+        Ok(Some(m))
+    } else {
+        Ok(None)
+    }
 }
 
 #[tauri::command]
@@ -106,9 +156,32 @@ pub fn set_jira_config(
     state: State<SettingsState>,
     config: JiraConfig,
 ) -> Result<(), String> {
+    eprintln!("[Jira] set_jira_config called - host: {}, email: {:?}, has_token: {}",
+        config.host, config.email, config.api_token.is_some());
+
+    // Store token in secure storage if provided
+    if let Some(ref token) = config.api_token {
+        if !token.is_empty() {
+            let token_key = secure_store::jira_token_key(&config.host);
+            eprintln!("[Jira] Storing token with key: {}, token_len: {}", token_key, token.len());
+            match secure_store::store_secret(&token_key, token) {
+                Ok(()) => eprintln!("[Jira] Token stored successfully"),
+                Err(e) => {
+                    eprintln!("[Jira] Failed to store token: {}", e);
+                    return Err(e);
+                }
+            }
+        } else {
+            eprintln!("[Jira] Token provided but empty, skipping storage");
+        }
+    } else {
+        eprintln!("[Jira] No token provided");
+    }
+
+    // Store metadata (without token) in settings
     let mut settings = state.0.lock().map_err(|e| e.to_string())?;
-    // Single connection: replace all with one
-    settings.jira_configs = vec![config];
+    let meta: JiraConfigMeta = (&config).into();
+    settings.jira_configs = vec![meta];
     save_settings(&app, &settings)
 }
 
@@ -118,15 +191,27 @@ pub fn remove_jira_config(
     state: State<SettingsState>,
 ) -> Result<(), String> {
     let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+
+    // Delete token from secure storage
+    for meta in &settings.jira_configs {
+        let token_key = secure_store::jira_token_key(&meta.host);
+        let _ = secure_store::delete_secret(&token_key); // Ignore errors
+    }
+
     settings.jira_configs.clear();
     save_settings(&app, &settings)
 }
 
 #[tauri::command]
 pub async fn validate_jira_credentials(config: JiraConfig) -> Result<ValidateResult, String> {
+    let email = config.email.as_ref().filter(|e| !e.is_empty())
+        .ok_or("Email is required for validation")?;
+    let api_token = config.api_token.as_ref().filter(|t| !t.is_empty())
+        .ok_or("API token is required for validation")?;
+
     let client = Client::new();
 
-    let auth = STANDARD.encode(format!("{}:{}", config.email, config.api_token));
+    let auth = STANDARD.encode(format!("{}:{}", email, api_token));
     let base_url = format!("https://{}/rest/api/3", config.host);
 
     let response = client
@@ -181,6 +266,7 @@ pub struct PullRequestInfo {
 
 #[tauri::command]
 pub async fn fetch_pull_requests(
+    app: tauri::AppHandle,
     state: State<'_, SettingsState>,
     owner: String,
     repo: String,
@@ -189,15 +275,29 @@ pub async fn fetch_pull_requests(
     // Extract config data before await to avoid holding MutexGuard across await
     let (base_url, token) = {
         let settings = state.0.lock().map_err(|e| e.to_string())?;
-        let config = settings.github_configs.first()
+        let meta = settings.github_configs.first()
             .ok_or("No GitHub config found")?;
 
-        let base_url = if config.config_type == "enterprise" {
-            format!("https://{}/api/v3", config.host.as_deref().unwrap_or("github.com"))
+        let base_url = if meta.config_type == "enterprise" {
+            format!("https://{}/api/v3", meta.host.as_deref().unwrap_or("github.com"))
         } else {
             "https://api.github.com".to_string()
         };
-        (base_url, config.token.clone())
+
+        // Get token from secure storage (with migration from old format)
+        let token_key = secure_store::github_token_key(&meta.id);
+        let meta_id = meta.id.clone();
+        migrate_token_if_needed(&app, &token_key, |settings_value| {
+            settings_value
+                .get("github_configs")
+                .and_then(|arr| arr.as_array())
+                .and_then(|arr| arr.iter().find(|c| c.get("id").and_then(|v| v.as_str()) == Some(meta_id.as_str())))
+                .and_then(|c| c.get("token"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        });
+        let token = secure_store::get_secret(&token_key)?.unwrap_or_default();
+        (base_url, token)
     };
 
     let client = Client::new();
@@ -252,18 +352,74 @@ pub struct JiraIssueInfo {
 
 #[tauri::command]
 pub async fn fetch_jira_issue(
+    app: tauri::AppHandle,
     state: State<'_, SettingsState>,
     issue_key: String,
 ) -> Result<Option<JiraIssueInfo>, String> {
+    eprintln!("[Jira] fetch_jira_issue called for: {}", issue_key);
+
     // Extract config data before await to avoid holding MutexGuard across await
     let (auth, base_url, host) = {
         let settings = state.0.lock().map_err(|e| e.to_string())?;
-        let config = settings.jira_configs.first()
-            .ok_or("No Jira config found")?;
+        let meta = match settings.jira_configs.first() {
+            Some(m) => m,
+            None => {
+                eprintln!("[Jira] No config found");
+                return Ok(None);
+            }
+        };
 
-        let auth = STANDARD.encode(format!("{}:{}", config.email, config.api_token));
-        let base_url = format!("https://{}/rest/api/3", config.host);
-        (auth, base_url, config.host.clone())
+        eprintln!("[Jira] Config found - host: {}, email: {:?}", meta.host, meta.email);
+
+        // Check if email is configured - if not, skip API call (links-only mode)
+        let email = match &meta.email {
+            Some(e) if !e.is_empty() => e.clone(),
+            _ => {
+                eprintln!("[Jira] No email configured");
+                return Ok(None);
+            }
+        };
+
+        // Get token from secure storage (with migration from old format)
+        let token_key = secure_store::jira_token_key(&meta.host);
+        eprintln!("[Jira] Looking for token with key: {}", token_key);
+
+        let meta_host = meta.host.clone();
+        migrate_token_if_needed(&app, &token_key, |settings_value| {
+            settings_value
+                .get("jira_configs")
+                .and_then(|arr| arr.as_array())
+                .and_then(|arr| arr.iter().find(|c| c.get("host").and_then(|v| v.as_str()) == Some(meta_host.as_str())))
+                .and_then(|c| c.get("api_token"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+        });
+
+        let api_token = match secure_store::get_secret(&token_key) {
+            Ok(Some(t)) => {
+                eprintln!("[Jira] Token found, length: {}", t.len());
+                t
+            }
+            Ok(None) => {
+                eprintln!("[Jira] No token in keychain");
+                return Ok(None);
+            }
+            Err(e) => {
+                eprintln!("[Jira] Error getting token: {}", e);
+                return Ok(None);
+            }
+        };
+
+        // Skip API call if no token
+        if api_token.is_empty() {
+            eprintln!("[Jira] Token is empty");
+            return Ok(None);
+        }
+
+        let auth = STANDARD.encode(format!("{}:{}", email, api_token));
+        let base_url = format!("https://{}/rest/api/3", meta.host);
+        eprintln!("[Jira] Making API call to: {}/issue/{}", base_url, issue_key);
+        (auth, base_url, meta.host.clone())
     };
 
     let client = Client::new();
@@ -275,9 +431,16 @@ pub async fn fetch_jira_issue(
         .header("Accept", "application/json")
         .send()
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| {
+            eprintln!("[Jira] Request error: {}", e);
+            e.to_string()
+        })?;
+
+    eprintln!("[Jira] Response status: {}", response.status());
 
     if !response.status().is_success() {
+        let body = response.text().await.unwrap_or_default();
+        eprintln!("[Jira] Error response body: {}", body);
         return Ok(None);
     }
 

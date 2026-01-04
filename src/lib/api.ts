@@ -42,7 +42,7 @@ export interface BackendAppSettings {
   default_worktree_template?: string;
   copy_paths?: string[];
   fetch_before_create?: boolean;
-  clipboard_parse_pattern?: string;
+  clipboard_parse_patterns?: string[];
   last_used_project?: string;
   refresh_interval_minutes: number;
   skip_open_ide_confirm?: boolean;
@@ -82,8 +82,8 @@ export async function setFetchBeforeCreate(enabled: boolean): Promise<void> {
   return invoke('set_fetch_before_create', { enabled });
 }
 
-export async function setClipboardParsePattern(pattern: string): Promise<void> {
-  return invoke('set_clipboard_parse_pattern', { pattern });
+export async function setClipboardParsePatterns(patterns: string[]): Promise<void> {
+  return invoke('set_clipboard_parse_patterns', { patterns });
 }
 
 export async function setLastUsedProject(project: string): Promise<void> {
@@ -230,11 +230,22 @@ export async function setWorktreeMemo(path: string, memo: WorktreeMemo): Promise
 
 // ============ GitHub Integration API ============
 
+// Full config (used when saving - token sent to backend)
 export interface GitHubConfig {
+  id: string;
+  name: string;
   config_type: 'personal' | 'enterprise';
   token: string;
   host?: string;
   username?: string;
+}
+
+// Metadata only (returned from backend - no token exposed)
+export interface GitHubConfigMeta {
+  id: string;
+  name: string;
+  config_type: 'personal' | 'enterprise';
+  host?: string;
 }
 
 export interface ValidateResult {
@@ -254,7 +265,7 @@ export interface PullRequestInfo {
   checks_status?: string;
 }
 
-export async function getGitHubConfig(): Promise<GitHubConfig | null> {
+export async function getGitHubConfig(): Promise<GitHubConfigMeta | null> {
   return invoke('get_github_config');
 }
 
@@ -280,11 +291,20 @@ export async function fetchPullRequests(
 
 // ============ Jira Integration API ============
 
+// Full config (used when saving - token sent to backend)
 export interface JiraConfig {
   host: string;
-  email: string;
-  api_token: string;
+  email?: string;
+  api_token?: string;
   display_name?: string;
+}
+
+// Metadata only (returned from backend - no token exposed)
+export interface JiraConfigMeta {
+  host: string;
+  email?: string;
+  display_name?: string;
+  has_token?: boolean;
 }
 
 export interface JiraIssueInfo {
@@ -295,7 +315,7 @@ export interface JiraIssueInfo {
   url: string;
 }
 
-export async function getJiraConfig(): Promise<JiraConfig | null> {
+export async function getJiraConfig(): Promise<JiraConfigMeta | null> {
   return invoke('get_jira_config');
 }
 

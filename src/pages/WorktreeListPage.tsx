@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Settings,
   Plus,
@@ -16,7 +17,8 @@ import {
   CircleDot,
   GitMerge,
 } from 'lucide-react';
-import { message } from '@tauri-apps/plugin-dialog';
+import { message, ask } from '@tauri-apps/plugin-dialog';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import * as api from '@/lib/api';
 import type { Project, Worktree, IDEPreset } from '@/types';
@@ -28,6 +30,8 @@ interface WorktreeListPageProps {
   onAddProject: () => void;
   onCreateWorktree: (project: Project) => void;
   onEditWorktree: (worktree: Worktree, repoPath: string) => void;
+  expandedProjects: Set<string>;
+  onExpandedProjectsChange: (expanded: Set<string>) => void;
 }
 
 // Extended worktree with PR and Jira info
@@ -60,13 +64,15 @@ export function WorktreeListPage({
   onAddProject,
   onCreateWorktree,
   onEditWorktree,
+  expandedProjects,
+  onExpandedProjectsChange,
 }: WorktreeListPageProps) {
   const [projects, setProjects] = useState<ProjectWithIntegrations[]>([]);
-  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<api.BackendAppSettings | null>(null);
   const [hasGitHub, setHasGitHub] = useState(false);
   const [hasJira, setHasJira] = useState(false);
+  const [jiraHost, setJiraHost] = useState<string | null>(null);
 
   const loadData = async () => {
     try {
@@ -78,8 +84,10 @@ export function WorktreeListPage({
         api.getJiraConfig().catch(() => null),
       ]);
       setSettings(settingsData);
-      setHasGitHub(!!githubConfig);
-      setHasJira(!!jiraConfig);
+      // Check if integrations are configured (by metadata presence, not token)
+      setHasGitHub(!!githubConfig?.id);
+      setHasJira(!!jiraConfig?.host);
+      setJiraHost(jiraConfig?.host || null);
 
       // Load worktrees for each project
       const projectsWithWorktrees: ProjectWithIntegrations[] = await Promise.all(
@@ -107,27 +115,31 @@ export function WorktreeListPage({
                 }
 
                 // Load Jira info if configured and issue number exists
-                if (jiraConfig && result.issueNumber) {
+                if (jiraConfig?.host && result.issueNumber) {
+                  console.log('[Jira Debug] Fetching issue:', result.issueNumber, 'host:', jiraConfig.host, 'email:', jiraConfig.email);
                   try {
                     const jiraInfo = await api.fetchJiraIssue(result.issueNumber);
+                    console.log('[Jira Debug] Result for', result.issueNumber, ':', jiraInfo);
                     if (jiraInfo) {
                       result.jiraInfo = jiraInfo;
                     }
-                  } catch {
-                    // Ignore
+                  } catch (err) {
+                    console.error('[Jira Debug] Failed to fetch Jira issue:', result.issueNumber, err);
                   }
+                } else {
+                  console.log('[Jira Debug] Skipping fetch - host:', jiraConfig?.host, 'issueNumber:', result.issueNumber);
                 }
 
                 // Load PR info if GitHub configured
-                if (githubConfig && remoteInfo && !w.is_main) {
+                if (githubConfig?.id && remoteInfo && !w.is_main) {
                   try {
                     const prs = await api.fetchPullRequests(remoteInfo.owner, remoteInfo.repo, w.branch);
                     if (prs.length > 0) {
                       // Get the most recent/relevant PR
                       result.prInfo = prs[0];
                     }
-                  } catch {
-                    // Ignore
+                  } catch (err) {
+                    console.error('Failed to fetch PRs:', w.branch, err);
                   }
                 }
 
@@ -155,7 +167,10 @@ export function WorktreeListPage({
       );
 
       setProjects(projectsWithWorktrees);
-      setExpandedProjects(new Set(projectsWithWorktrees.map((p) => p.name)));
+      // Only auto-expand all if no expansion state exists
+      if (expandedProjects.size === 0) {
+        onExpandedProjectsChange(new Set(projectsWithWorktrees.map((p) => p.name)));
+      }
     } catch (err) {
       console.error('Failed to load data:', err);
     } finally {
@@ -168,21 +183,32 @@ export function WorktreeListPage({
   }, []);
 
   const toggleProject = (name: string) => {
-    setExpandedProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
-    });
+    const next = new Set(expandedProjects);
+    if (next.has(name)) {
+      next.delete(name);
+    } else {
+      next.add(name);
+    }
+    onExpandedProjectsChange(next);
   };
 
   const handleOpenIde = async (path: string, projectIde?: string) => {
     // Use project IDE override if set, otherwise use global settings
     const preset = projectIde || settings?.ide?.preset || 'code';
     const customCommand = settings?.ide?.custom_command;
+    const skipConfirm = settings?.skip_open_ide_confirm ?? false;
+
+    // Show confirmation dialog unless skip is enabled
+    if (!skipConfirm) {
+      const folderName = path.split('/').pop() || path;
+      const confirmed = await ask(`Open "${folderName}" in ${preset}?`, {
+        title: 'Open IDE',
+        kind: 'info',
+        okLabel: 'Open',
+        cancelLabel: 'Cancel',
+      });
+      if (!confirmed) return;
+    }
 
     try {
       await api.openIde(path, preset, customCommand);
@@ -215,15 +241,16 @@ export function WorktreeListPage({
   // Check if any worktree has data for optional columns
   const allWorktrees = projects.flatMap((p) => p.worktrees);
   const hasAnyDescription = allWorktrees.some((w) => w.description);
-  const hasAnyGitHub = hasGitHub && allWorktrees.some((w) => w.prInfo);
-  const hasAnyJira = hasJira && allWorktrees.some((w) => w.jiraInfo);
+  // Show integration columns if connected (even if no worktree has data yet)
+  const hasAnyGitHub = hasGitHub;
+  const hasAnyJira = hasJira;
 
   return (
     <div className="h-full flex flex-col">
       {/* Titlebar drag area with actions */}
       <div data-tauri-drag-region className="titlebar">
         <div className="titlebar-spacer" />
-        <span className="titlebar-title">Grovr</span>
+        <span data-tauri-drag-region className="titlebar-title">Grovr</span>
         <div className="flex items-center gap-1 no-drag">
           <button className="icon-button-sm" onClick={loadData} title="Refresh">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
@@ -239,7 +266,7 @@ export function WorktreeListPage({
 
       {/* Content */}
       <ScrollArea className="flex-1">
-        <div className="px-2 pt-1 pb-20 space-y-0">
+        <div className="px-2 pt-1 pb-2 space-y-0">
           {projects.length === 0 && !loading && (
             <div className="empty-state">
               <div className="empty-state-icon">📁</div>
@@ -268,6 +295,7 @@ export function WorktreeListPage({
               showDescription={hasAnyDescription}
               showGitHub={hasAnyGitHub}
               showJira={hasAnyJira}
+              jiraHost={jiraHost}
             />
           ))}
         </div>
@@ -282,6 +310,7 @@ interface ProjectCardProps {
   onToggle: () => void;
   onOpenProjectSettings: (project: Project) => void;
   onOpenIde: (path: string, projectIde?: string) => void;
+  jiraHost: string | null;
   onOpenFinder: (path: string) => void;
   onOpenTerminal: (path: string) => void;
   onCreateWorktree: () => void;
@@ -304,6 +333,7 @@ function ProjectCard({
   showDescription,
   showGitHub,
   showJira,
+  jiraHost,
 }: ProjectCardProps) {
   return (
     <div className="project-section">
@@ -358,6 +388,7 @@ function ProjectCard({
                 showDescription={showDescription}
                 showGitHub={showGitHub}
                 showJira={showJira}
+                jiraHost={jiraHost}
               />
             ))
           )}
@@ -376,6 +407,7 @@ interface WorktreeRowProps {
   showDescription: boolean;
   showGitHub: boolean;
   showJira: boolean;
+  jiraHost: string | null;
 }
 
 function WorktreeRow({
@@ -387,8 +419,34 @@ function WorktreeRow({
   showDescription,
   showGitHub,
   showJira,
+  jiraHost,
 }: WorktreeRowProps) {
   const [showActions, setShowActions] = useState(false);
+  const [dropdownPos, setDropdownPos] = useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+  }>({ left: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!showActions) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(target) &&
+        buttonRef.current && !buttonRef.current.contains(target)
+      ) {
+        setShowActions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showActions]);
 
   const handleRowClick = () => {
     if (!showActions) {
@@ -398,31 +456,48 @@ function WorktreeRow({
 
   const handleMoreClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!showActions && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = 110;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUpward = spaceBelow < dropdownHeight + 10;
+
+      if (openUpward) {
+        // Use bottom positioning for upward opening
+        setDropdownPos({
+          bottom: window.innerHeight - rect.top + 2,
+          left: rect.right - 160,
+        });
+      } else {
+        setDropdownPos({
+          top: rect.bottom + 2,
+          left: rect.right - 160,
+        });
+      }
+    }
     setShowActions(!showActions);
   };
 
+  const getPRStatusClass = (pr: PullRequestInfo) => {
+    if (pr.merged) return 'status-merged';
+    if (pr.draft) return 'status-draft';
+    if (pr.state === 'open') return 'status-open';
+    return 'status-closed';
+  };
+
   const getPRIcon = (pr: PullRequestInfo) => {
-    if (pr.merged) return <GitMerge size={12} className="text-purple-500" />;
-    if (pr.draft) return <GitPullRequest size={12} className="text-muted-foreground" />;
-    if (pr.state === 'open') return <GitPullRequest size={12} className="text-green-500" />;
-    return <GitPullRequest size={12} className="text-red-500" />;
+    if (pr.merged) return <GitMerge size={10} className="badge-icon" />;
+    return <GitPullRequest size={10} className="badge-icon" />;
   };
 
-  const getPRLabel = (pr: PullRequestInfo) => {
-    if (pr.merged) return 'Merged';
-    if (pr.draft) return 'Draft';
-    if (pr.state === 'open') return 'Open';
-    return 'Closed';
-  };
-
-  const getJiraStatusColor = (category: string) => {
+  const getJiraStatusClass = (category: string) => {
     switch (category) {
       case 'done':
-        return 'text-green-500';
+        return 'status-done';
       case 'indeterminate':
-        return 'text-blue-500';
+        return 'status-in-progress';
       default:
-        return 'text-muted-foreground';
+        return 'status-todo';
     }
   };
 
@@ -448,59 +523,71 @@ function WorktreeRow({
         </div>
       )}
 
-      {/* GitHub Status - only show if any worktree has GitHub data */}
+      {/* GitHub Status - badge style */}
       {showGitHub && (
         <div className="worktree-col-github">
           {worktree.prInfo ? (
-            <a
-              href={worktree.prInfo.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="integration-link"
-              onClick={(e) => e.stopPropagation()}
+            <button
+              className={`integration-badge-link ${getPRStatusClass(worktree.prInfo)}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                openUrl(worktree.prInfo!.url);
+              }}
             >
               {getPRIcon(worktree.prInfo)}
-              <span className="integration-link-text">
-                #{worktree.prInfo.number} {getPRLabel(worktree.prInfo)}
-              </span>
-              <ExternalLink size={10} className="integration-link-icon" />
-            </a>
+              <span className="badge-text">#{worktree.prInfo.number}</span>
+              <ExternalLink size={8} className="badge-external" />
+            </button>
           ) : (
-            <span className="text-muted-light">—</span>
+            <span className="text-muted-light text-xs">—</span>
           )}
         </div>
       )}
 
-      {/* Jira Status - only show if any worktree has Jira data */}
+      {/* Jira Status - badge style */}
       {showJira && (
         <div className="worktree-col-jira">
-          {worktree.jiraInfo ? (
-            <a
-              href={worktree.jiraInfo.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="integration-link"
-              onClick={(e) => e.stopPropagation()}
+          {worktree.issueNumber && jiraHost ? (
+            <button
+              className={`integration-badge-link ${worktree.jiraInfo ? getJiraStatusClass(worktree.jiraInfo.status_category) : 'status-link-only'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                const url = worktree.jiraInfo?.url || `https://${jiraHost}/browse/${worktree.issueNumber}`;
+                openUrl(url);
+              }}
             >
-              <CircleDot size={12} className={getJiraStatusColor(worktree.jiraInfo.status_category)} />
-              <span className="integration-link-text">
-                {worktree.jiraInfo.key}
+              <CircleDot size={10} className="badge-icon" />
+              <span className="badge-text">
+                {worktree.jiraInfo?.key || worktree.issueNumber}
               </span>
-              <ExternalLink size={10} className="integration-link-icon" />
-            </a>
+              <ExternalLink size={8} className="badge-external" />
+            </button>
           ) : (
-            <span className="text-muted-light">—</span>
+            <span className="text-muted-light text-xs">—</span>
           )}
         </div>
       )}
 
       {/* Actions */}
       <div className="worktree-col-actions">
-        <button className="worktree-more" title="More actions" onClick={handleMoreClick}>
+        <button
+          ref={buttonRef}
+          className="worktree-more"
+          title="More actions"
+          onClick={handleMoreClick}
+        >
           <MoreHorizontal size={14} />
         </button>
-        {showActions && (
-          <div className="worktree-actions-dropdown">
+        {showActions && createPortal(
+          <div
+            ref={dropdownRef}
+            className="worktree-actions-dropdown-portal"
+            style={{
+              top: dropdownPos.top,
+              bottom: dropdownPos.bottom,
+              left: dropdownPos.left,
+            }}
+          >
             <button
               className="worktree-dropdown-item"
               onClick={(e) => {
@@ -534,7 +621,8 @@ function WorktreeRow({
               <Terminal size={14} />
               <span>Open Terminal</span>
             </button>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>

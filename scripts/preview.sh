@@ -76,4 +76,4 @@ echo "Press Ctrl+C to stop and restore original settings."
 echo ""
 
 cd "$PROJECT_ROOT"
-npm run tauri dev
+pnpm tauri dev

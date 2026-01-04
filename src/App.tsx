@@ -5,6 +5,7 @@ import { ProjectSettingsPage } from '@/pages/ProjectSettingsPage';
 import { AddProjectPage } from '@/pages/AddProjectPage';
 import { CreateWorktreePage } from '@/pages/CreateWorktreePage';
 import { EditWorktreePage } from '@/pages/EditWorktreePage';
+import { readText } from '@tauri-apps/plugin-clipboard-manager';
 import * as api from '@/lib/api';
 import type { Project, Worktree, IDEPreset } from '@/types';
 import './index.css';
@@ -34,7 +35,8 @@ function App() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [theme, setTheme] = useState<ThemeMode>('system');
   const [clipboardData, setClipboardData] = useState<ParsedClipboard | null>(null);
-  const clipboardPatternRef = useRef<string>('\\[(?<issueNumber>[A-Z]+-\\d+)\\]\\s*(?<description>.+)');
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const clipboardPatternsRef = useRef<string[]>(['\\[(?<issueNumber>[A-Z]+-\\d+)\\]\\s*(?<description>.+)']);
 
   // Load saved theme and clipboard pattern on startup
   useEffect(() => {
@@ -43,8 +45,8 @@ function App() {
         const savedTheme = (settings.theme as ThemeMode) || 'system';
         setTheme(savedTheme);
         applyTheme(savedTheme);
-        if (settings.clipboard_parse_pattern) {
-          clipboardPatternRef.current = settings.clipboard_parse_pattern;
+        if (settings.clipboard_parse_patterns && settings.clipboard_parse_patterns.length > 0) {
+          clipboardPatternsRef.current = settings.clipboard_parse_patterns;
         }
       })
       .catch(() => {
@@ -81,13 +83,28 @@ function App() {
         }
 
         try {
-          const text = await navigator.clipboard.readText();
-          if (!text || !clipboardPatternRef.current) return;
+          const text = await readText();
+          if (!text || clipboardPatternsRef.current.length === 0) return;
 
-          const regex = new RegExp(clipboardPatternRef.current);
-          const match = text.match(regex);
+          // Try each pattern until one matches
+          let matchedData: ParsedClipboard | null = null;
+          for (const pattern of clipboardPatternsRef.current) {
+            try {
+              const regex = new RegExp(pattern);
+              const match = text.match(regex);
+              if (match?.groups) {
+                matchedData = {
+                  issueNumber: match.groups.issueNumber || '',
+                  description: match.groups.description || '',
+                };
+                break;
+              }
+            } catch {
+              // Invalid regex, skip
+            }
+          }
 
-          if (match?.groups) {
+          if (matchedData) {
             e.preventDefault();
 
             // Load projects and select the first one
@@ -102,10 +119,7 @@ function App() {
               ide: firstProject.ide?.preset as IDEPreset | undefined,
               worktrees: [],
             });
-            setClipboardData({
-              issueNumber: match.groups.issueNumber || '',
-              description: match.groups.description || '',
-            });
+            setClipboardData(matchedData);
             setPage('create-worktree');
           }
         } catch {
@@ -147,6 +161,8 @@ function App() {
           onAddProject={() => setPage('add-project')}
           onCreateWorktree={handleCreateWorktree}
           onEditWorktree={handleEditWorktree}
+          expandedProjects={expandedProjects}
+          onExpandedProjectsChange={setExpandedProjects}
         />
       )}
       {page === 'settings' && (
@@ -181,6 +197,7 @@ function App() {
             setClipboardData(null);
           }}
           initialData={clipboardData}
+          allowProjectChange={!!clipboardData}
         />
       )}
       {page === 'edit-worktree' && selectedWorktree && (

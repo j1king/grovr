@@ -2,11 +2,15 @@ import { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
 import * as api from '@/lib/api';
 
+const DEFAULT_PATTERN = '\\[(?<issueNumber>[A-Z]+-\\d+)\\]\\s*(?<description>.+)';
+
 export function WorktreeSettings() {
   const [pathTemplate, setPathTemplate] = useState('{project}.worktrees/{branch}-{description}');
   const [fetchBeforeCreate, setFetchBeforeCreate] = useState(true);
   const [copyPaths, setCopyPaths] = useState<string[]>([]);
   const [newCopyPath, setNewCopyPath] = useState('');
+  const [clipboardPatterns, setClipboardPatterns] = useState<string[]>([]);
+  const [newPattern, setNewPattern] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,6 +23,8 @@ export function WorktreeSettings() {
       setPathTemplate(settings.default_worktree_template || '{project}.worktrees/{branch}-{description}');
       setFetchBeforeCreate(settings.fetch_before_create ?? true);
       setCopyPaths(settings.copy_paths || []);
+      const patterns = settings.clipboard_parse_patterns || [];
+      setClipboardPatterns(patterns.length > 0 ? patterns : [DEFAULT_PATTERN]);
     } catch (err) {
       console.error('Failed to load settings:', err);
     } finally {
@@ -70,6 +76,37 @@ export function WorktreeSettings() {
     } catch (err) {
       console.error('Failed to save copy paths:', err);
       setCopyPaths(copyPaths);
+    }
+  };
+
+  const addClipboardPattern = async () => {
+    if (newPattern.trim() && !clipboardPatterns.includes(newPattern.trim())) {
+      // Validate regex
+      try {
+        new RegExp(newPattern.trim());
+      } catch {
+        return; // Invalid regex
+      }
+      const newPatterns = [...clipboardPatterns, newPattern.trim()];
+      setClipboardPatterns(newPatterns);
+      setNewPattern('');
+      try {
+        await api.setClipboardParsePatterns(newPatterns);
+      } catch (err) {
+        console.error('Failed to save clipboard patterns:', err);
+        setClipboardPatterns(clipboardPatterns);
+      }
+    }
+  };
+
+  const removeClipboardPattern = async (pattern: string) => {
+    const newPatterns = clipboardPatterns.filter((p) => p !== pattern);
+    setClipboardPatterns(newPatterns);
+    try {
+      await api.setClipboardParsePatterns(newPatterns);
+    } catch (err) {
+      console.error('Failed to save clipboard patterns:', err);
+      setClipboardPatterns(clipboardPatterns);
     }
   };
 
@@ -140,6 +177,39 @@ export function WorktreeSettings() {
               onKeyDown={(e) => e.key === 'Enter' && addCopyPath()}
             />
             <button className="btn-icon" onClick={addCopyPath}>
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+
+        <div className="settings-item-full">
+          <label className="settings-label">Clipboard patterns</label>
+          <p className="settings-hint">
+            Regex patterns to parse clipboard (cmd+v). Use named groups: <code>issueNumber</code>, <code>description</code>
+          </p>
+          <div className="copy-paths-list mt-1.5">
+            {clipboardPatterns.map((pattern) => (
+              <div key={pattern} className="copy-path-item">
+                <code className="text-xs break-all">{pattern}</code>
+                <button
+                  className="copy-path-remove"
+                  onClick={() => removeClipboardPattern(pattern)}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="copy-path-add">
+            <input
+              type="text"
+              className="settings-input font-mono text-xs"
+              placeholder="(?<issueNumber>...)"
+              value={newPattern}
+              onChange={(e) => setNewPattern(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addClipboardPattern()}
+            />
+            <button className="btn-icon" onClick={addClipboardPattern}>
               <Plus size={14} />
             </button>
           </div>

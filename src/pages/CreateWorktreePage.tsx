@@ -8,14 +8,26 @@ interface ParsedClipboard {
   description: string;
 }
 
+const IDE_NAMES: Record<string, string> = {
+  code: 'VS Code',
+  cursor: 'Cursor',
+  idea: 'IntelliJ IDEA',
+  webstorm: 'WebStorm',
+  pycharm: 'PyCharm',
+  goland: 'GoLand',
+};
+
 interface CreateWorktreePageProps {
   project: Project;
   onBack: () => void;
   onWorktreeCreated: () => void;
   initialData?: ParsedClipboard | null;
+  allowProjectChange?: boolean;
 }
 
-export function CreateWorktreePage({ project, onBack, onWorktreeCreated, initialData }: CreateWorktreePageProps) {
+export function CreateWorktreePage({ project: initialProject, onBack, onWorktreeCreated, initialData, allowProjectChange }: CreateWorktreePageProps) {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project>(initialProject);
   const [issueNumber, setIssueNumber] = useState(initialData?.issueNumber || '');
   const [branchName, setBranchName] = useState(initialData?.issueNumber || '');
   const [description, setDescription] = useState(initialData?.description || '');
@@ -29,19 +41,25 @@ export function CreateWorktreePage({ project, onBack, onWorktreeCreated, initial
   const [settings, setSettings] = useState<api.BackendAppSettings | null>(null);
 
   useEffect(() => {
+    if (allowProjectChange) {
+      loadProjects();
+    }
+  }, [allowProjectChange]);
+
+  useEffect(() => {
     loadInitialData();
-  }, [project]);
+  }, [selectedProject]);
 
   // Auto-generate path when branch name or description changes
   useEffect(() => {
-    if (branchName) {
+    if (branchName && selectedProject) {
       const template = settings?.default_worktree_template || '{project}.worktrees/{branch}-{description}';
       const descriptionSlug = description
         .trim()
         .replace(/[\/:*?"<>|\\&;'`$#%!()[\]{}]/g, '_')
         .replace(/\s+/g, '-');
-      const parentPath = project.repoPath.split('/').slice(0, -1).join('/');
-      const projectName = project.repoPath.split('/').pop() || project.name;
+      const parentPath = selectedProject.repoPath.split('/').slice(0, -1).join('/');
+      const projectName = selectedProject.repoPath.split('/').pop() || selectedProject.name;
 
       let path = template
         .replace('{project}', `${parentPath}/${projectName}`)
@@ -52,13 +70,40 @@ export function CreateWorktreePage({ project, onBack, onWorktreeCreated, initial
     } else {
       setWorktreePath('');
     }
-  }, [branchName, description, project, settings]);
+  }, [branchName, description, selectedProject, settings]);
+
+  const loadProjects = async () => {
+    try {
+      const [projectList, settingsData] = await Promise.all([
+        api.getProjects(),
+        api.getSettings(),
+      ]);
+
+      const projectInfos: Project[] = projectList.map((p) => ({
+        name: p.name,
+        repoPath: p.repo_path,
+        defaultBaseBranch: p.default_base_branch,
+        worktrees: [],
+      }));
+      setProjects(projectInfos);
+
+      // Select last used project or first project
+      const lastUsed = settingsData.last_used_project;
+      const defaultProject = projectInfos.find(p => p.repoPath === lastUsed) || projectInfos[0];
+      if (defaultProject) {
+        setSelectedProject(defaultProject);
+      }
+    } catch (err) {
+      console.error('Failed to load projects:', err);
+    }
+  };
 
   const loadInitialData = async () => {
+    if (!selectedProject) return;
     try {
       const [settingsData, branchList] = await Promise.all([
         api.getSettings(),
-        api.getBranches(project.repoPath, true),
+        api.getBranches(selectedProject.repoPath, true),
       ]);
       setSettings(settingsData);
       setFetchBeforeCreate(settingsData.fetch_before_create ?? true);
@@ -76,7 +121,7 @@ export function CreateWorktreePage({ project, onBack, onWorktreeCreated, initial
       setBranches({ local, remote });
 
       // Set default base branch
-      const defaultBase = project.defaultBaseBranch || 'origin/main';
+      const defaultBase = selectedProject.defaultBaseBranch || 'origin/main';
       setBaseBranch(defaultBase);
     } catch {
       // Ignore error
@@ -95,7 +140,7 @@ export function CreateWorktreePage({ project, onBack, onWorktreeCreated, initial
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!branchName.trim() || !worktreePath.trim()) {
+    if (!selectedProject || !branchName.trim() || !worktreePath.trim()) {
       setError('Branch name and worktree path are required');
       return;
     }
@@ -106,12 +151,12 @@ export function CreateWorktreePage({ project, onBack, onWorktreeCreated, initial
     try {
       // Fetch if needed
       if (fetchBeforeCreate && baseBranch.startsWith('origin/')) {
-        await api.gitFetch(project.repoPath);
+        await api.gitFetch(selectedProject.repoPath);
       }
 
       // Create worktree
       await api.createWorktree(
-        project.repoPath,
+        selectedProject.repoPath,
         worktreePath.trim(),
         branchName.trim(),
         baseBranch.trim()
@@ -125,11 +170,14 @@ export function CreateWorktreePage({ project, onBack, onWorktreeCreated, initial
         });
       }
 
+      // Save last used project
+      await api.setLastUsedProject(selectedProject.repoPath);
+
       // Copy paths if configured
       const copyPaths = settings?.copy_paths || [];
       if (copyPaths.length > 0) {
         // Find main worktree path
-        const worktrees = await api.getWorktrees(project.repoPath);
+        const worktrees = await api.getWorktrees(selectedProject.repoPath);
         const mainWorktree = worktrees.find((w) => w.is_main);
         if (mainWorktree) {
           await api.copyPathsToWorktree(mainWorktree.path, worktreePath.trim(), copyPaths);
@@ -168,15 +216,32 @@ export function CreateWorktreePage({ project, onBack, onWorktreeCreated, initial
 
             <form onSubmit={handleSubmit}>
               <div className="settings-group mt-4">
-                {/* Project (read-only) */}
+                {/* Project */}
                 <div className="settings-item-full">
                   <label className="settings-label">Project</label>
-                  <input
-                    type="text"
-                    className="settings-input settings-input-readonly"
-                    value={project.name}
-                    readOnly
-                  />
+                  {allowProjectChange && projects.length > 0 ? (
+                    <select
+                      className="settings-select w-full"
+                      value={selectedProject?.repoPath || ''}
+                      onChange={(e) => {
+                        const project = projects.find(p => p.repoPath === e.target.value);
+                        if (project) setSelectedProject(project);
+                      }}
+                    >
+                      {projects.map((p) => (
+                        <option key={p.repoPath} value={p.repoPath}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      className="settings-input settings-input-readonly"
+                      value={selectedProject?.name || ''}
+                      readOnly
+                    />
+                  )}
                 </div>
 
                 {/* Base Branch */}
@@ -290,7 +355,9 @@ export function CreateWorktreePage({ project, onBack, onWorktreeCreated, initial
                       onChange={(e) => setOpenIDE(e.target.checked)}
                       className="rounded"
                     />
-                    <span className="text-sm">Open IDE after creation</span>
+                    <span className="text-sm">
+                      Open in {IDE_NAMES[settings?.ide?.preset || 'code'] || 'IDE'} after creation
+                    </span>
                   </label>
                 </div>
 

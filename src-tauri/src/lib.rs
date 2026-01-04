@@ -7,10 +7,11 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 use window_vibrancy::apply_mica;
 
 mod commands;
+mod secure_store;
 mod types;
 
 use commands::settings::{
-    get_settings, get_worktree_memo, init_settings, set_clipboard_parse_pattern, set_copy_paths,
+    get_settings, get_worktree_memo, init_settings, set_clipboard_parse_patterns, set_copy_paths,
     set_default_worktree_template, set_fetch_before_create, set_ide, set_last_used_project,
     set_launch_at_startup, set_onboarding_completed, set_refresh_interval_minutes,
     set_skip_open_ide_confirm, set_theme, set_worktree_memo,
@@ -80,7 +81,7 @@ pub fn run() {
             set_default_worktree_template,
             set_copy_paths,
             set_fetch_before_create,
-            set_clipboard_parse_pattern,
+            set_clipboard_parse_patterns,
             set_last_used_project,
             set_refresh_interval_minutes,
             set_skip_open_ide_confirm,
