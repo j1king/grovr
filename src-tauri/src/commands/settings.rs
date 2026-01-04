@@ -1,5 +1,6 @@
 use crate::types::{AppSettings, IdeConfig, WorktreeMemo};
 use tauri::State;
+use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_store::StoreExt;
 use std::sync::Mutex;
 
@@ -64,6 +65,15 @@ pub fn set_launch_at_startup(
     state: State<SettingsState>,
     enabled: bool,
 ) -> Result<(), String> {
+    // Actually enable/disable OS-level autostart
+    let autostart_manager = app.autolaunch();
+    if enabled {
+        autostart_manager.enable().map_err(|e| e.to_string())?;
+    } else {
+        autostart_manager.disable().map_err(|e| e.to_string())?;
+    }
+
+    // Save setting
     let mut settings = state.0.lock().map_err(|e| e.to_string())?;
     settings.launch_at_startup = Some(enabled);
     save_settings(&app, &settings)

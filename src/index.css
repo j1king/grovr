@@ -178,7 +178,7 @@ html, body, #root {
 .worktree-row:active { background: hsl(var(--accent) / 0.7); }
 
 .worktree-col-branch { @apply flex items-center gap-1.5 flex-1 min-w-0; }
-.worktree-col-description { @apply w-[200px] min-w-0 px-2; }
+.worktree-col-description { @apply flex-1 max-w-[200px] min-w-0 px-2; }
 .worktree-col-github { @apply w-[100px] flex justify-center flex-shrink-0; }
 .worktree-col-jira { @apply w-[100px] flex justify-center flex-shrink-0; }
 .worktree-col-actions { @apply relative w-[28px] flex justify-end flex-shrink-0; }

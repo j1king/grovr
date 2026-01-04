@@ -518,7 +518,7 @@ function WorktreeRow({
       {showDescription && (
         <div className="worktree-col-description">
           <span className="worktree-description">
-            {worktree.description || <span className="text-muted-light">—</span>}
+            {worktree.description}
           </span>
         </div>
       )}
@@ -538,9 +538,7 @@ function WorktreeRow({
               <span className="badge-text">#{worktree.prInfo.number}</span>
               <ExternalLink size={8} className="badge-external" />
             </button>
-          ) : (
-            <span className="text-muted-light text-xs">—</span>
-          )}
+          ) : null}
         </div>
       )}
 
@@ -562,9 +560,7 @@ function WorktreeRow({
               </span>
               <ExternalLink size={8} className="badge-external" />
             </button>
-          ) : (
-            <span className="text-muted-light text-xs">—</span>
-          )}
+          ) : null}
         </div>
       )}
 
