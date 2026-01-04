@@ -15,6 +15,7 @@ const ideOptions: { id: IDEPreset; name: string }[] = [
 export function IDESettings() {
   const [selectedIDE, setSelectedIDE] = useState<IDEPreset>('code');
   const [customCommand, setCustomCommand] = useState('');
+  const [skipConfirm, setSkipConfirm] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export function IDESettings() {
         setSelectedIDE((settings.ide.preset as IDEPreset) || 'code');
         setCustomCommand(settings.ide.custom_command || '');
       }
+      setSkipConfirm(settings.skip_open_ide_confirm ?? false);
     } catch (err) {
       console.error('Failed to load settings:', err);
     } finally {
@@ -63,6 +65,16 @@ export function IDESettings() {
       } catch (err) {
         console.error('Failed to save custom command:', err);
       }
+    }
+  };
+
+  const handleSkipConfirm = async (skip: boolean) => {
+    setSkipConfirm(skip);
+    try {
+      await api.setSkipOpenIdeConfirm(skip);
+    } catch (err) {
+      console.error('Failed to save skip confirm:', err);
+      setSkipConfirm(!skip);
     }
   };
 
@@ -110,6 +122,24 @@ export function IDESettings() {
             />
           </div>
         )}
+
+        {/* Skip IDE Confirmation */}
+        <div className="settings-item">
+          <div className="settings-item-info">
+            <label className="settings-label">Skip confirmation</label>
+            <p className="settings-hint">
+              Open IDE directly without asking for confirmation
+            </p>
+          </div>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={skipConfirm}
+              onChange={(e) => handleSkipConfirm(e.target.checked)}
+            />
+            <span className="toggle-slider" />
+          </label>
+        </div>
       </div>
     </div>
   );

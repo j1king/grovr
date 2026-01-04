@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { WorktreeListPage } from '@/pages/WorktreeListPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { ProjectSettingsPage } from '@/pages/ProjectSettingsPage';
@@ -6,11 +6,16 @@ import { AddProjectPage } from '@/pages/AddProjectPage';
 import { CreateWorktreePage } from '@/pages/CreateWorktreePage';
 import { EditWorktreePage } from '@/pages/EditWorktreePage';
 import * as api from '@/lib/api';
-import type { Project, Worktree } from '@/types';
+import type { Project, Worktree, IDEPreset } from '@/types';
 import './index.css';
 
 type Page = 'worktrees' | 'settings' | 'project-settings' | 'add-project' | 'create-worktree' | 'edit-worktree';
 type ThemeMode = 'system' | 'light' | 'dark';
+
+interface ParsedClipboard {
+  issueNumber: string;
+  description: string;
+}
 
 function applyTheme(theme: ThemeMode) {
   const root = document.documentElement;
@@ -28,14 +33,19 @@ function App() {
   const [selectedWorktree, setSelectedWorktree] = useState<Worktree | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [theme, setTheme] = useState<ThemeMode>('system');
+  const [clipboardData, setClipboardData] = useState<ParsedClipboard | null>(null);
+  const clipboardPatternRef = useRef<string>('\\[(?<issueNumber>[A-Z]+-\\d+)\\]\\s*(?<description>.+)');
 
-  // Load saved theme on startup
+  // Load saved theme and clipboard pattern on startup
   useEffect(() => {
     api.getSettings()
       .then((settings) => {
         const savedTheme = (settings.theme as ThemeMode) || 'system';
         setTheme(savedTheme);
         applyTheme(savedTheme);
+        if (settings.clipboard_parse_pattern) {
+          clipboardPatternRef.current = settings.clipboard_parse_pattern;
+        }
       })
       .catch(() => {
         applyTheme('system');
@@ -51,6 +61,62 @@ function App() {
     mediaQuery.addEventListener('change', handler);
     return () => mediaQuery.removeEventListener('change', handler);
   }, [theme]);
+
+  // Global keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      // cmd+, : Open settings
+      if (e.metaKey && e.key === ',') {
+        e.preventDefault();
+        setPage('settings');
+        return;
+      }
+
+      // cmd+v : Parse clipboard and open create worktree page
+      if (e.metaKey && e.key === 'v') {
+        // Don't intercept if focus is on input/textarea
+        const activeEl = document.activeElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+          return;
+        }
+
+        try {
+          const text = await navigator.clipboard.readText();
+          if (!text || !clipboardPatternRef.current) return;
+
+          const regex = new RegExp(clipboardPatternRef.current);
+          const match = text.match(regex);
+
+          if (match?.groups) {
+            e.preventDefault();
+
+            // Load projects and select the first one
+            const projects = await api.getProjects();
+            if (projects.length === 0) return;
+
+            const firstProject = projects[0];
+            setSelectedProject({
+              name: firstProject.name,
+              repoPath: firstProject.repo_path,
+              defaultBaseBranch: firstProject.default_base_branch,
+              ide: firstProject.ide?.preset as IDEPreset | undefined,
+              worktrees: [],
+            });
+            setClipboardData({
+              issueNumber: match.groups.issueNumber || '',
+              description: match.groups.description || '',
+            });
+            setPage('create-worktree');
+          }
+        } catch {
+          // Clipboard access denied or parse failed - ignore
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleOpenProjectSettings = (project: Project) => {
     setSelectedProject(project);
@@ -106,8 +172,15 @@ function App() {
       {page === 'create-worktree' && selectedProject && (
         <CreateWorktreePage
           project={selectedProject}
-          onBack={() => setPage('worktrees')}
-          onWorktreeCreated={handleRefresh}
+          onBack={() => {
+            setPage('worktrees');
+            setClipboardData(null);
+          }}
+          onWorktreeCreated={() => {
+            handleRefresh();
+            setClipboardData(null);
+          }}
+          initialData={clipboardData}
         />
       )}
       {page === 'edit-worktree' && selectedWorktree && (

@@ -3,16 +3,22 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import * as api from '@/lib/api';
 import type { Project } from '@/types';
 
+interface ParsedClipboard {
+  issueNumber: string;
+  description: string;
+}
+
 interface CreateWorktreePageProps {
   project: Project;
   onBack: () => void;
   onWorktreeCreated: () => void;
+  initialData?: ParsedClipboard | null;
 }
 
-export function CreateWorktreePage({ project, onBack, onWorktreeCreated }: CreateWorktreePageProps) {
-  const [issueNumber, setIssueNumber] = useState('');
-  const [branchName, setBranchName] = useState('');
-  const [description, setDescription] = useState('');
+export function CreateWorktreePage({ project, onBack, onWorktreeCreated, initialData }: CreateWorktreePageProps) {
+  const [issueNumber, setIssueNumber] = useState(initialData?.issueNumber || '');
+  const [branchName, setBranchName] = useState(initialData?.issueNumber || '');
+  const [description, setDescription] = useState(initialData?.description || '');
   const [baseBranch, setBaseBranch] = useState('');
   const [worktreePath, setWorktreePath] = useState('');
   const [openIDE, setOpenIDE] = useState(true);
@@ -110,6 +116,14 @@ export function CreateWorktreePage({ project, onBack, onWorktreeCreated }: Creat
         branchName.trim(),
         baseBranch.trim()
       );
+
+      // Save memo if provided
+      if (description || issueNumber) {
+        await api.setWorktreeMemo(worktreePath.trim(), {
+          description: description || undefined,
+          issue_number: issueNumber || undefined,
+        });
+      }
 
       // Copy paths if configured
       const copyPaths = settings?.copy_paths || [];
