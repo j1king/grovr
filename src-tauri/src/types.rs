@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct IdeConfig {
@@ -45,7 +46,7 @@ pub struct JiraConfig {
     pub views: Vec<JiraView>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct WorktreeMemo {
     pub description: Option<String>,
     pub issue_number: Option<String>,
@@ -81,6 +82,8 @@ pub struct AppSettings {
     pub github_configs: Vec<GitHubConfig>,
     #[serde(default)]
     pub jira_configs: Vec<JiraConfig>,
+    #[serde(default)]
+    pub worktree_memos: HashMap<String, WorktreeMemo>,
 }
 
 fn default_theme() -> String {

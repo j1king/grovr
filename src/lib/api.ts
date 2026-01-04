@@ -178,6 +178,10 @@ export async function deleteBranch(repoPath: string, branchName: string, force: 
   return invoke('delete_branch', { repoPath, branchName, force });
 }
 
+export async function renameBranch(repoPath: string, oldName: string, newName: string): Promise<void> {
+  return invoke('rename_branch', { repoPath, oldName, newName });
+}
+
 // ============ Git - Operations API ============
 
 export async function gitFetch(repoPath: string): Promise<void> {
@@ -208,4 +212,19 @@ export async function copyPathsToWorktree(
   paths: string[]
 ): Promise<void> {
   return invoke('copy_paths_to_worktree', { sourcePath, targetPath, paths });
+}
+
+// ============ Worktree Memo API ============
+
+export interface WorktreeMemo {
+  description?: string;
+  issue_number?: string;
+}
+
+export async function getWorktreeMemo(path: string): Promise<WorktreeMemo> {
+  return invoke('get_worktree_memo', { path });
+}
+
+export async function setWorktreeMemo(path: string, memo: WorktreeMemo): Promise<void> {
+  return invoke('set_worktree_memo', { path, memo });
 }

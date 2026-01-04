@@ -5,6 +5,7 @@ export interface Worktree {
   isMain: boolean;
   description?: string;
   issueNumber?: string;
+  repoPath?: string; // Added for edit context
 }
 
 export interface Project {

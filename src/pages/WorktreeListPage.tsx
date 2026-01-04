@@ -9,6 +9,8 @@ import {
   RefreshCw,
   Folder,
   Terminal,
+  GitBranchPlus,
+  Pencil,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import * as api from '@/lib/api';
@@ -17,9 +19,18 @@ import type { Project, Worktree } from '@/types';
 interface WorktreeListPageProps {
   onOpenSettings: () => void;
   onOpenProjectSettings: (project: Project) => void;
+  onAddProject: () => void;
+  onCreateWorktree: (project: Project) => void;
+  onEditWorktree: (worktree: Worktree, repoPath: string) => void;
 }
 
-export function WorktreeListPage({ onOpenSettings, onOpenProjectSettings }: WorktreeListPageProps) {
+export function WorktreeListPage({
+  onOpenSettings,
+  onOpenProjectSettings,
+  onAddProject,
+  onCreateWorktree,
+  onEditWorktree,
+}: WorktreeListPageProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -39,16 +50,33 @@ export function WorktreeListPage({ onOpenSettings, onOpenProjectSettings }: Work
         projectsData.map(async (p) => {
           try {
             const worktrees = await api.getWorktrees(p.repo_path);
+            // Load memos for each worktree
+            const worktreesWithMemos = await Promise.all(
+              worktrees.map(async (w) => {
+                try {
+                  const memo = await api.getWorktreeMemo(w.path);
+                  return {
+                    path: w.path,
+                    branch: w.branch,
+                    isMain: w.is_main,
+                    description: memo.description,
+                    issueNumber: memo.issue_number,
+                  };
+                } catch {
+                  return {
+                    path: w.path,
+                    branch: w.branch,
+                    isMain: w.is_main,
+                  };
+                }
+              })
+            );
             return {
               name: p.name,
               repoPath: p.repo_path,
               defaultBaseBranch: p.default_base_branch,
               emoji: p.emoji,
-              worktrees: worktrees.map((w) => ({
-                path: w.path,
-                branch: w.branch,
-                isMain: w.is_main,
-              })),
+              worktrees: worktreesWithMemos,
             };
           } catch {
             return {
@@ -113,6 +141,13 @@ export function WorktreeListPage({ onOpenSettings, onOpenProjectSettings }: Work
     }
   };
 
+  // Check if any worktree has data for optional columns
+  const allWorktrees = projects.flatMap((p) => p.worktrees);
+  const hasAnyDescription = allWorktrees.some((w) => w.description);
+  // For now, GitHub and Jira are placeholders
+  const hasAnyGitHub = false;
+  const hasAnyJira = false;
+
   return (
     <div className="h-full flex flex-col">
       {/* Titlebar drag area with actions */}
@@ -123,7 +158,7 @@ export function WorktreeListPage({ onOpenSettings, onOpenProjectSettings }: Work
           <button className="icon-button-sm" onClick={loadData} title="Refresh">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>
-          <button className="icon-button-sm" title="Add Project">
+          <button className="icon-button-sm" title="Add Project" onClick={onAddProject}>
             <Plus size={14} />
           </button>
           <button className="icon-button-sm" onClick={onOpenSettings} title="Settings">
@@ -142,7 +177,7 @@ export function WorktreeListPage({ onOpenSettings, onOpenProjectSettings }: Work
               <p className="empty-state-description">
                 Add your first project to start managing worktrees
               </p>
-              <button className="btn-secondary" onClick={onOpenSettings}>
+              <button className="btn-secondary" onClick={onAddProject}>
                 <Plus size={14} />
                 <span>Add Project</span>
               </button>
@@ -158,6 +193,11 @@ export function WorktreeListPage({ onOpenSettings, onOpenProjectSettings }: Work
               onOpenIde={handleOpenIde}
               onOpenFinder={handleOpenFinder}
               onOpenTerminal={handleOpenTerminal}
+              onCreateWorktree={() => onCreateWorktree(project)}
+              onEditWorktree={onEditWorktree}
+              showDescription={hasAnyDescription}
+              showGitHub={hasAnyGitHub}
+              showJira={hasAnyJira}
             />
           ))}
         </div>
@@ -174,6 +214,11 @@ interface ProjectCardProps {
   onOpenIde: (path: string) => void;
   onOpenFinder: (path: string) => void;
   onOpenTerminal: (path: string) => void;
+  onCreateWorktree: () => void;
+  onEditWorktree: (worktree: Worktree, repoPath: string) => void;
+  showDescription: boolean;
+  showGitHub: boolean;
+  showJira: boolean;
 }
 
 function ProjectCard({
@@ -184,13 +229,17 @@ function ProjectCard({
   onOpenIde,
   onOpenFinder,
   onOpenTerminal,
+  onCreateWorktree,
+  onEditWorktree,
+  showDescription,
+  showGitHub,
+  showJira,
 }: ProjectCardProps) {
   return (
     <div className="project-section">
       {/* Project Header */}
       <div className="project-header">
         <button className="project-toggle" onClick={onToggle}>
-          <span className="project-emoji">{project.emoji || '📁'}</span>
           <span className="project-name">{project.name}</span>
           {expanded ? (
             <ChevronDown size={14} className="project-chevron" />
@@ -198,16 +247,28 @@ function ProjectCard({
             <ChevronRight size={14} className="project-chevron" />
           )}
         </button>
-        <button
-          className="project-settings"
-          title="Project Settings"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenProjectSettings(project);
-          }}
-        >
-          <Settings size={14} />
-        </button>
+        <div className="project-actions">
+          <button
+            className="project-action"
+            title="New Worktree"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCreateWorktree();
+            }}
+          >
+            <GitBranchPlus size={14} />
+          </button>
+          <button
+            className="project-settings"
+            title="Project Settings"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenProjectSettings(project);
+            }}
+          >
+            <Settings size={14} />
+          </button>
+        </div>
       </div>
 
       {/* Worktree Table */}
@@ -223,6 +284,10 @@ function ProjectCard({
                 onOpenIde={onOpenIde}
                 onOpenFinder={onOpenFinder}
                 onOpenTerminal={onOpenTerminal}
+                onEdit={() => onEditWorktree(worktree, project.repoPath)}
+                showDescription={showDescription}
+                showGitHub={showGitHub}
+                showJira={showJira}
               />
             ))
           )}
@@ -237,20 +302,39 @@ interface WorktreeRowProps {
   onOpenIde: (path: string) => void;
   onOpenFinder: (path: string) => void;
   onOpenTerminal: (path: string) => void;
+  onEdit: () => void;
+  showDescription: boolean;
+  showGitHub: boolean;
+  showJira: boolean;
 }
 
-function WorktreeRow({ worktree, onOpenIde, onOpenFinder, onOpenTerminal }: WorktreeRowProps) {
+function WorktreeRow({
+  worktree,
+  onOpenIde,
+  onOpenFinder,
+  onOpenTerminal,
+  onEdit,
+  showDescription,
+  showGitHub,
+  showJira,
+}: WorktreeRowProps) {
   const [showActions, setShowActions] = useState(false);
 
-  const handleClick = () => {
-    onOpenIde(worktree.path);
+  const handleRowClick = () => {
+    if (!showActions) {
+      onOpenIde(worktree.path);
+    }
+  };
+
+  const handleMoreClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowActions(!showActions);
   };
 
   return (
     <div
       className="worktree-row"
-      onClick={handleClick}
-      onMouseEnter={() => setShowActions(true)}
+      onClick={handleRowClick}
       onMouseLeave={() => setShowActions(false)}
     >
       {/* Branch */}
@@ -260,58 +344,72 @@ function WorktreeRow({ worktree, onOpenIde, onOpenFinder, onOpenTerminal }: Work
         {worktree.isMain && <span className="worktree-main-badge">main</span>}
       </div>
 
-      {/* Description */}
-      <div className="worktree-col-description">
-        <span className="worktree-description">
-          {worktree.description || <span className="text-muted-light">—</span>}
-        </span>
-      </div>
+      {/* Description - only show if any worktree has description */}
+      {showDescription && (
+        <div className="worktree-col-description">
+          <span className="worktree-description">
+            {worktree.description || <span className="text-muted-light">—</span>}
+          </span>
+        </div>
+      )}
 
-      {/* GitHub Status - placeholder for Phase 5 */}
-      <div className="worktree-col-github">
-        <span className="text-muted-light">—</span>
-      </div>
+      {/* GitHub Status - only show if any worktree has GitHub data */}
+      {showGitHub && (
+        <div className="worktree-col-github">
+          <span className="text-muted-light">—</span>
+        </div>
+      )}
 
-      {/* Jira Status - placeholder for Phase 6 */}
-      <div className="worktree-col-jira">
-        <span className="text-muted-light">—</span>
-      </div>
+      {/* Jira Status - only show if any worktree has Jira data */}
+      {showJira && (
+        <div className="worktree-col-jira">
+          <span className="text-muted-light">—</span>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="worktree-col-actions">
-        {showActions ? (
-          <div className="flex gap-1">
+        <button className="worktree-more" title="More actions" onClick={handleMoreClick}>
+          <MoreHorizontal size={14} />
+        </button>
+        {showActions && (
+          <div className="worktree-actions-dropdown">
             <button
-              className="worktree-action"
-              title="Open in Finder"
+              className="worktree-dropdown-item"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+                setShowActions(false);
+              }}
+            >
+              <Pencil size={14} />
+              <span>Edit</span>
+            </button>
+            <button
+              className="worktree-dropdown-item"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenFinder(worktree.path);
+                setShowActions(false);
               }}
             >
               <Folder size={14} />
+              <span>Open in Finder</span>
             </button>
             <button
-              className="worktree-action"
-              title="Open Terminal"
+              className="worktree-dropdown-item"
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenTerminal(worktree.path);
+                setShowActions(false);
               }}
             >
               <Terminal size={14} />
-            </button>
-            <button className="worktree-action" title="More actions">
-              <MoreHorizontal size={14} />
+              <span>Open Terminal</span>
             </button>
           </div>
-        ) : (
-          <button className="worktree-more" title="More actions">
-            <MoreHorizontal size={14} />
-          </button>
         )}
       </div>
     </div>
   );
 }
-

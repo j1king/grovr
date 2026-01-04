@@ -311,6 +311,21 @@ pub fn delete_branch(repo_path: String, branch_name: String, force: bool) -> Res
     Ok(())
 }
 
+#[tauri::command]
+pub fn rename_branch(repo_path: String, old_name: String, new_name: String) -> Result<(), String> {
+    let output = Command::new("git")
+        .args(["branch", "-m", &old_name, &new_name])
+        .current_dir(&repo_path)
+        .output()
+        .map_err(|e| format!("Failed to run git: {}", e))?;
+
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).to_string());
+    }
+
+    Ok(())
+}
+
 // ============ Git Operations ============
 
 #[tauri::command]

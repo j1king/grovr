@@ -123,11 +123,11 @@ html, body, #root {
 }
 
 .project-header {
-  @apply flex items-center relative;
+  @apply flex items-center justify-between;
 }
 
 .project-toggle {
-  @apply flex-1 flex items-center gap-1.5 py-1.5 pl-2 pr-8 text-left transition-colors text-sm rounded-md;
+  @apply flex-1 flex items-center gap-1.5 py-1.5 pl-2 pr-2 text-left transition-colors text-sm rounded-md;
   -webkit-app-region: no-drag;
 }
 .project-toggle:hover {
@@ -145,12 +145,18 @@ html, body, #root {
 .project-emoji { @apply text-sm; }
 .project-name { @apply font-medium text-sm; }
 
-.project-settings {
-  @apply absolute right-1 w-6 h-6 rounded flex items-center justify-center transition-all opacity-0;
-  color: hsl(var(--muted-foreground));
+.project-actions {
+  @apply flex items-center gap-0.5 opacity-0 transition-all;
   -webkit-app-region: no-drag;
 }
-.project-header:hover .project-settings { @apply opacity-100; }
+.project-header:hover .project-actions { @apply opacity-100; }
+
+.project-action,
+.project-settings {
+  @apply w-6 h-6 rounded flex items-center justify-center transition-all;
+  color: hsl(var(--muted-foreground));
+}
+.project-action:hover,
 .project-settings:hover {
   background: hsl(var(--secondary));
   color: hsl(var(--foreground));
@@ -171,11 +177,25 @@ html, body, #root {
 .worktree-row:hover { background: hsl(var(--accent) / 0.5); }
 .worktree-row:active { background: hsl(var(--accent) / 0.7); }
 
-.worktree-col-branch { @apply flex items-center gap-1.5 w-[180px] min-w-0; }
-.worktree-col-description { @apply flex-1 min-w-0 px-2; }
-.worktree-col-github { @apply w-[85px] flex justify-center; }
-.worktree-col-jira { @apply w-[85px] flex justify-center; }
-.worktree-col-actions { @apply w-[28px] flex justify-end; }
+.worktree-col-branch { @apply flex items-center gap-1.5 flex-1 min-w-0; }
+.worktree-col-description { @apply w-[200px] min-w-0 px-2; }
+.worktree-col-github { @apply w-[85px] flex justify-center flex-shrink-0; }
+.worktree-col-jira { @apply w-[85px] flex justify-center flex-shrink-0; }
+.worktree-col-actions { @apply relative w-[28px] flex justify-end flex-shrink-0; }
+
+.worktree-actions-dropdown {
+  @apply absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[160px];
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+}
+
+.worktree-dropdown-item {
+  @apply w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left transition-colors;
+  color: hsl(var(--foreground));
+}
+.worktree-dropdown-item:hover {
+  background: hsl(var(--accent));
+}
 
 .worktree-branch-icon { @apply text-muted-foreground flex-shrink-0; }
 .worktree-branch-name { @apply font-mono text-xs truncate; }
@@ -325,7 +345,7 @@ html, body, #root {
 .settings-title { @apply text-base font-semibold; }
 
 .settings-group {
-  @apply space-y-2 pt-3;
+  @apply space-y-1.5 pt-3;
   border-top: 1px solid hsl(var(--border));
 }
 .settings-group.first {
@@ -334,9 +354,9 @@ html, body, #root {
 }
 
 .settings-item {
-  @apply flex items-center justify-between gap-4 py-1.5;
+  @apply flex items-center justify-between gap-4 py-1;
 }
-.settings-item-full { @apply py-1.5; }
+.settings-item-full { @apply py-1; }
 .settings-item-info { @apply flex-1 min-w-0; }
 .settings-label { @apply text-xs font-medium; }
 .settings-hint { @apply text-[10px] text-muted-foreground mt-0.5; }
@@ -347,12 +367,15 @@ html, body, #root {
 
 .settings-select {
   @apply px-2.5 py-1 rounded-md text-xs cursor-pointer appearance-none;
-  background: hsl(var(--secondary));
+  background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
   padding-right: 28px;
+}
+.dark .settings-select {
+  background-color: hsl(240 6% 10%);
 }
 .settings-select:hover {
   background-color: hsl(var(--accent));
@@ -364,8 +387,16 @@ html, body, #root {
 
 .settings-input {
   @apply w-full px-2.5 py-1.5 rounded-md text-xs;
-  background: hsl(var(--secondary));
+  background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
+}
+.dark .settings-input {
+  background: hsl(240 6% 10%);
+}
+.settings-input-readonly {
+  @apply cursor-default;
+  background: hsl(var(--secondary) / 0.5);
+  color: hsl(var(--muted-foreground));
 }
 .settings-input:focus {
   @apply outline-none ring-1;
@@ -602,7 +633,7 @@ html, body, #root {
 }
 
 .project-settings-title {
-  @apply text-xl font-semibold;
+  @apply text-xl font-semibold mb-4;
 }
 
 /* Danger Zone */
@@ -632,5 +663,86 @@ html, body, #root {
 
 .danger-zone-item-desc {
   @apply text-xs mt-0.5;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Modal */
+.modal-overlay {
+  @apply fixed inset-0 z-50 flex items-center justify-center;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  @apply rounded-xl shadow-2xl w-full max-w-md mx-4;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+}
+
+.modal-header {
+  @apply flex items-center justify-between px-4 py-3;
+  border-bottom: 1px solid hsl(var(--border));
+}
+
+.modal-title {
+  @apply text-sm font-semibold;
+}
+
+.modal-close {
+  @apply w-6 h-6 rounded flex items-center justify-center transition-colors;
+  color: hsl(var(--muted-foreground));
+}
+.modal-close:hover {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.modal-body {
+  @apply p-4;
+}
+
+.modal-footer {
+  @apply flex justify-end gap-2 px-4 py-3;
+  border-top: 1px solid hsl(var(--border));
+}
+
+/* Page Layout */
+.page-header {
+  @apply flex items-center px-3 flex-shrink-0 select-none;
+  height: var(--titlebar-height);
+}
+
+.page-back {
+  @apply flex items-center gap-1.5 px-2 py-1 -ml-2 rounded-md text-sm transition-colors;
+  color: hsl(var(--muted-foreground));
+}
+.page-back:hover {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
+.page-wrapper {
+  @apply flex justify-center px-4 py-6;
+}
+
+.page-content {
+  @apply w-full;
+  max-width: 400px;
+}
+
+.page-title {
+  @apply text-lg font-semibold mb-4;
+}
+
+.page-title-row {
+  @apply flex items-center gap-2;
+}
+
+.page-title-emoji {
+  @apply text-2xl;
+}
+
+.page-subtitle {
+  @apply text-sm mt-1 mb-2;
   color: hsl(var(--muted-foreground));
 }

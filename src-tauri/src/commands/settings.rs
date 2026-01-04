@@ -1,4 +1,4 @@
-use crate::types::{AppSettings, IdeConfig};
+use crate::types::{AppSettings, IdeConfig, WorktreeMemo};
 use tauri::State;
 use tauri_plugin_store::StoreExt;
 use std::sync::Mutex;
@@ -154,5 +154,26 @@ pub fn set_onboarding_completed(
 ) -> Result<(), String> {
     let mut settings = state.0.lock().map_err(|e| e.to_string())?;
     settings.onboarding_completed = Some(completed);
+    save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn get_worktree_memo(
+    state: State<SettingsState>,
+    path: String,
+) -> Result<WorktreeMemo, String> {
+    let settings = state.0.lock().map_err(|e| e.to_string())?;
+    Ok(settings.worktree_memos.get(&path).cloned().unwrap_or_default())
+}
+
+#[tauri::command]
+pub fn set_worktree_memo(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    path: String,
+    memo: WorktreeMemo,
+) -> Result<(), String> {
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.worktree_memos.insert(path, memo);
     save_settings(&app, &settings)
 }

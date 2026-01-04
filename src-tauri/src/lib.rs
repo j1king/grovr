@@ -10,16 +10,16 @@ mod commands;
 mod types;
 
 use commands::settings::{
-    get_settings, init_settings, set_clipboard_parse_pattern, set_copy_paths,
+    get_settings, get_worktree_memo, init_settings, set_clipboard_parse_pattern, set_copy_paths,
     set_default_worktree_template, set_fetch_before_create, set_ide, set_last_used_project,
     set_launch_at_startup, set_onboarding_completed, set_refresh_interval_minutes,
-    set_skip_open_ide_confirm, set_theme,
+    set_skip_open_ide_confirm, set_theme, set_worktree_memo,
 };
 use commands::projects::{add_project, get_projects, remove_project, update_project};
 use commands::git::{
     get_worktrees, create_worktree, create_worktree_existing_branch, remove_worktree,
     prune_worktrees, get_worktree_status, get_branches, get_current_branch, get_default_branch,
-    delete_branch, git_fetch, git_pull, open_ide, open_in_finder, open_terminal,
+    delete_branch, rename_branch, git_fetch, git_pull, open_ide, open_in_finder, open_terminal,
     copy_paths_to_worktree,
 };
 
@@ -80,6 +80,8 @@ pub fn run() {
             set_refresh_interval_minutes,
             set_skip_open_ide_confirm,
             set_onboarding_completed,
+            get_worktree_memo,
+            set_worktree_memo,
             // Projects
             get_projects,
             add_project,
@@ -97,6 +99,7 @@ pub fn run() {
             get_current_branch,
             get_default_branch,
             delete_branch,
+            rename_branch,
             // Git - Operations
             git_fetch,
             git_pull,
