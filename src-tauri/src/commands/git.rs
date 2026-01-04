@@ -373,8 +373,9 @@ pub fn open_ide(path: String, ide_preset: String, custom_command: Option<String>
         _ => return Err(format!("Unknown IDE preset: {}", ide_preset)),
     };
 
-    Command::new(command)
-        .arg(&path)
+    // Use shell to access user's PATH environment
+    Command::new("sh")
+        .args(["-c", &format!("{} \"{}\"", command, path)])
         .spawn()
         .map_err(|e| format!("Failed to open IDE: {}", e))?;
 
