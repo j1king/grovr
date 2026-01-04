@@ -76,12 +76,17 @@ html, body, #root {
 
 /* Titlebar */
 .titlebar {
-  @apply flex items-center justify-between px-3 flex-shrink-0;
+  @apply relative flex items-center justify-between px-3 flex-shrink-0 select-none;
   height: var(--titlebar-height);
 }
 
 .titlebar-spacer {
   width: var(--traffic-light-width);
+}
+
+.titlebar-title {
+  @apply absolute left-1/2 -translate-x-1/2 text-xs font-medium;
+  color: hsl(var(--muted-foreground) / 0.65);
 }
 
 .icon-button-sm {
@@ -196,8 +201,34 @@ html, body, #root {
   color: hsl(var(--foreground));
 }
 
+.worktree-action {
+  @apply w-6 h-6 rounded flex items-center justify-center transition-all;
+  color: hsl(var(--muted-foreground));
+}
+.worktree-action:hover {
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
+}
+
 .text-muted { color: hsl(var(--muted-foreground)); }
 .text-muted-light { color: hsl(var(--muted-foreground) / 0.4); }
+
+/* Empty State */
+.empty-state {
+  @apply flex flex-col items-center justify-center text-center py-16 px-4;
+  min-height: calc(100vh - 80px);
+}
+.empty-state-icon {
+  @apply text-5xl mb-4 opacity-60;
+}
+.empty-state-title {
+  @apply text-base font-semibold mb-2;
+  color: hsl(var(--foreground));
+}
+.empty-state-description {
+  @apply text-sm mb-6 max-w-[240px];
+  color: hsl(var(--muted-foreground));
+}
 
 /* PR Badge */
 .pr-badge {
