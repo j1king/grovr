@@ -13,6 +13,7 @@
     "clipboard-manager:allow-read-text",
     "os:default",
     "shell:default",
-    "liquid-glass:default"
+    "liquid-glass:default",
+    "autostart:default"
   ]
 }

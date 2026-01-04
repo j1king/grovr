@@ -47,7 +47,8 @@ fn setup_window_effects(app: &tauri::App) -> Result<(), Box<dyn std::error::Erro
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         // Plugins
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -56,11 +57,19 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+        .plugin(tauri_plugin_liquid_glass::init());
+
+    // Only use autostart plugin on non-macOS (Windows/Linux)
+    // macOS uses SMAppService via smappservice-rs for native login item management
+    #[cfg(not(target_os = "macos"))]
+    {
+        builder = builder.plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::AppleScript,
             None,
-        ))
-        .plugin(tauri_plugin_liquid_glass::init())
+        ));
+    }
+
+    builder
         // Setup
         .setup(|app| {
             // Initialize settings state

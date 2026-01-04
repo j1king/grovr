@@ -1,5 +1,6 @@
 use crate::types::{AppSettings, IdeConfig, WorktreeMemo};
 use tauri::State;
+#[cfg(not(target_os = "macos"))]
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_store::StoreExt;
 use std::sync::Mutex;
@@ -65,12 +66,27 @@ pub fn set_launch_at_startup(
     state: State<SettingsState>,
     enabled: bool,
 ) -> Result<(), String> {
-    // Actually enable/disable OS-level autostart
-    let autostart_manager = app.autolaunch();
-    if enabled {
-        autostart_manager.enable().map_err(|e| e.to_string())?;
-    } else {
-        autostart_manager.disable().map_err(|e| e.to_string())?;
+    // macOS: Use SMAppService for native login item management
+    #[cfg(target_os = "macos")]
+    {
+        use smappservice_rs::{AppService, ServiceType};
+        let app_service = AppService::new(ServiceType::MainApp);
+        if enabled {
+            app_service.register().map_err(|e| e.to_string())?;
+        } else {
+            app_service.unregister().map_err(|e| e.to_string())?;
+        }
+    }
+
+    // Windows/Linux: Use tauri-plugin-autostart
+    #[cfg(not(target_os = "macos"))]
+    {
+        let autostart_manager = app.autolaunch();
+        if enabled {
+            autostart_manager.enable().map_err(|e| e.to_string())?;
+        } else {
+            autostart_manager.disable().map_err(|e| e.to_string())?;
+        }
     }
 
     // Save setting

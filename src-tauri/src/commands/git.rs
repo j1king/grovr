@@ -373,9 +373,17 @@ pub fn open_ide(path: String, ide_preset: String, custom_command: Option<String>
         _ => return Err(format!("Unknown IDE preset: {}", ide_preset)),
     };
 
-    // Use shell to access user's PATH environment
+    // Use login shell to access user's PATH environment
+    // GUI apps don't inherit terminal PATH, so we need -l flag to load shell profile
+    #[cfg(target_os = "macos")]
+    Command::new("/bin/zsh")
+        .args(["-l", "-c", &format!("{} \"{}\"", command, path)])
+        .spawn()
+        .map_err(|e| format!("Failed to open IDE: {}", e))?;
+
+    #[cfg(not(target_os = "macos"))]
     Command::new("sh")
-        .args(["-c", &format!("{} \"{}\"", command, path)])
+        .args(["-l", "-c", &format!("{} \"{}\"", command, path)])
         .spawn()
         .map_err(|e| format!("Failed to open IDE: {}", e))?;
 

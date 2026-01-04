@@ -48,14 +48,6 @@ impl From<&GitHubConfig> for GitHubConfigMeta {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct JiraView {
-    pub id: String,
-    pub name: String,
-    pub jql: String,
-    pub columns: Option<Vec<String>>,
-}
-
 // Full config sent from frontend (includes token)
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JiraConfig {
