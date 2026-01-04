@@ -18,7 +18,7 @@ export function ProjectSettingsPage({ project, onBack, onDeleted, onSaved }: Pro
   const [branches, setBranches] = useState<string[]>([]);
   const [name, setName] = useState(project.name);
   const [defaultBaseBranch, setDefaultBaseBranch] = useState(project.defaultBaseBranch || '');
-  const [ideOverride, setIdeOverride] = useState('');
+  const [ideOverride, setIdeOverride] = useState(project.ide || '');
 
   useEffect(() => {
     loadBranches();

@@ -16,9 +16,10 @@ import {
   CircleDot,
   GitMerge,
 } from 'lucide-react';
+import { message } from '@tauri-apps/plugin-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import * as api from '@/lib/api';
-import type { Project, Worktree } from '@/types';
+import type { Project, Worktree, IDEPreset } from '@/types';
 import type { PullRequestInfo, JiraIssueInfo } from '@/lib/api';
 
 interface WorktreeListPageProps {
@@ -138,7 +139,7 @@ export function WorktreeListPage({
               name: p.name,
               repoPath: p.repo_path,
               defaultBaseBranch: p.default_base_branch,
-              emoji: p.emoji,
+              ide: p.ide?.preset as IDEPreset | undefined,
               worktrees: worktreesWithData,
             };
           } catch {
@@ -146,7 +147,7 @@ export function WorktreeListPage({
               name: p.name,
               repoPath: p.repo_path,
               defaultBaseBranch: p.default_base_branch,
-              emoji: p.emoji,
+              ide: p.ide?.preset as IDEPreset | undefined,
               worktrees: [],
             };
           }
@@ -178,13 +179,20 @@ export function WorktreeListPage({
     });
   };
 
-  const handleOpenIde = async (path: string) => {
+  const handleOpenIde = async (path: string, projectIde?: string) => {
+    // Use project IDE override if set, otherwise use global settings
+    const preset = projectIde || settings?.ide?.preset || 'code';
+    const customCommand = settings?.ide?.custom_command;
+
     try {
-      const preset = settings?.ide?.preset || 'code';
-      const customCommand = settings?.ide?.custom_command;
       await api.openIde(path, preset, customCommand);
     } catch (err) {
       console.error('Failed to open IDE:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      await message(
+        `Failed to open IDE "${preset}".\n\nMake sure the IDE is installed and the command is available in your PATH.\n\nError: ${errorMessage}`,
+        { title: 'IDE Error', kind: 'error' }
+      );
     }
   };
 
@@ -231,7 +239,7 @@ export function WorktreeListPage({
 
       {/* Content */}
       <ScrollArea className="flex-1">
-        <div className="px-2 pt-1 space-y-0">
+        <div className="px-2 pt-1 pb-20 space-y-0">
           {projects.length === 0 && !loading && (
             <div className="empty-state">
               <div className="empty-state-icon">📁</div>
@@ -273,7 +281,7 @@ interface ProjectCardProps {
   expanded: boolean;
   onToggle: () => void;
   onOpenProjectSettings: (project: Project) => void;
-  onOpenIde: (path: string) => void;
+  onOpenIde: (path: string, projectIde?: string) => void;
   onOpenFinder: (path: string) => void;
   onOpenTerminal: (path: string) => void;
   onCreateWorktree: () => void;
@@ -343,7 +351,7 @@ function ProjectCard({
               <WorktreeRow
                 key={worktree.path}
                 worktree={worktree}
-                onOpenIde={onOpenIde}
+                onOpenIde={(path) => onOpenIde(path, project.ide)}
                 onOpenFinder={onOpenFinder}
                 onOpenTerminal={onOpenTerminal}
                 onEdit={() => onEditWorktree(worktree, project.repoPath)}

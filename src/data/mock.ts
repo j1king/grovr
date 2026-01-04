@@ -5,7 +5,6 @@ export const mockProjects: Project[] = [
     name: 'grovr-desktop',
     repoPath: '/Users/j1king/my/grovr-desktop',
     defaultBaseBranch: 'origin/main',
-    emoji: '🌳',
     worktrees: [
       {
         path: '/Users/j1king/my/grovr-desktop',
@@ -32,7 +31,6 @@ export const mockProjects: Project[] = [
     name: 'api-server',
     repoPath: '/Users/j1king/projects/api-server',
     defaultBaseBranch: 'origin/develop',
-    emoji: '🚀',
     worktrees: [
       {
         path: '/Users/j1king/projects/api-server',
@@ -64,7 +62,6 @@ export const mockProjects: Project[] = [
   {
     name: 'web-app',
     repoPath: '/Users/j1king/projects/web-app',
-    emoji: '🌐',
     worktrees: [
       {
         path: '/Users/j1king/projects/web-app',

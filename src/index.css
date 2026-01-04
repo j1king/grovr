@@ -142,7 +142,6 @@ html, body, #root {
   @apply opacity-100;
 }
 
-.project-emoji { @apply text-sm; }
 .project-name { @apply font-medium text-sm; }
 
 .project-actions {
@@ -649,10 +648,6 @@ html, body, #root {
   @apply flex items-center gap-2 mb-4;
 }
 
-.project-settings-emoji {
-  @apply text-2xl;
-}
-
 .project-settings-title {
   @apply text-xl font-semibold mb-4;
 }
@@ -757,10 +752,6 @@ html, body, #root {
 
 .page-title-row {
   @apply flex items-center gap-2;
-}
-
-.page-title-emoji {
-  @apply text-2xl;
 }
 
 .page-subtitle {

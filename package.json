@@ -8,7 +8,12 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "test:e2e": "./scripts/run-e2e-tests.sh all",
+    "test:smoke": "./scripts/run-e2e-tests.sh smoke",
+    "test:critical": "./scripts/run-e2e-tests.sh critical",
+    "test:worktree": "./scripts/run-e2e-tests.sh worktree",
+    "test:settings": "./scripts/run-e2e-tests.sh settings"
   },
   "dependencies": {
     "@radix-ui/react-scroll-area": "^1.2.10",
@@ -33,6 +38,7 @@
     "tauri-plugin-liquid-glass-api": "^0.1.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/typography": "^0.5.19",
     "@tauri-apps/cli": "^2",
     "@types/node": "^22.10.1",
@@ -40,6 +46,7 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "autoprefixer": "^10.4.20",
+    "playwright": "^1.57.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "typescript": "~5.8.3",

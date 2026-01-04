@@ -33,7 +33,6 @@ export interface BackendProjectConfig {
   repo_path: string;
   default_base_branch?: string;
   ide?: BackendIdeConfig;
-  emoji?: string;
 }
 
 export interface BackendAppSettings {

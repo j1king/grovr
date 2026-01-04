@@ -13,7 +13,6 @@ export interface Project {
   repoPath: string;
   defaultBaseBranch?: string;
   ide?: IDEPreset;
-  emoji?: string;
   worktrees: Worktree[];
 }
 
