@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "opener:default",
+    "store:default",
+    "dialog:default",
+    "clipboard-manager:default",
+    "os:default",
+    "shell:default",
+    "liquid-glass:default"
+  ]
+}
