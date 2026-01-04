@@ -246,6 +246,7 @@ export interface GitHubConfigMeta {
   name: string;
   config_type: 'personal' | 'enterprise';
   host?: string;
+  username?: string;
 }
 
 export interface ValidateResult {

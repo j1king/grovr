@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { ExternalLink, Check, Loader2 } from 'lucide-react';
 import * as api from '@/lib/api';
-import type { GitHubConfig } from '@/lib/api';
+import type { GitHubConfig, GitHubConfigMeta } from '@/lib/api';
 
 export function GitHubSettings() {
-  const [config, setConfig] = useState<GitHubConfig | null>(null);
+  const [config, setConfig] = useState<GitHubConfigMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -110,11 +110,6 @@ export function GitHubSettings() {
     setHost('');
     setError('');
     setTestResult(null);
-  };
-
-  const maskToken = (t: string) => {
-    if (t.length <= 8) return '••••••••';
-    return `${t.slice(0, 4)}...${t.slice(-4)}`;
   };
 
   if (loading) {
