@@ -22,6 +22,11 @@ use commands::git::{
     delete_branch, rename_branch, git_fetch, git_pull, open_ide, open_in_finder, open_terminal,
     copy_paths_to_worktree,
 };
+use commands::integrations::{
+    get_github_config, set_github_config, remove_github_config, validate_github_token,
+    get_jira_config, set_jira_config, remove_jira_config, validate_jira_credentials,
+    fetch_pull_requests, fetch_jira_issue,
+};
 
 fn setup_window_effects(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let window = app.get_webview_window("main").expect("no main window");
@@ -108,6 +113,18 @@ pub fn run() {
             open_in_finder,
             open_terminal,
             copy_paths_to_worktree,
+            // Integrations - GitHub
+            get_github_config,
+            set_github_config,
+            remove_github_config,
+            validate_github_token,
+            fetch_pull_requests,
+            // Integrations - Jira
+            get_jira_config,
+            set_jira_config,
+            remove_jira_config,
+            validate_jira_credentials,
+            fetch_jira_issue,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

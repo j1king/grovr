@@ -228,3 +228,90 @@ export async function getWorktreeMemo(path: string): Promise<WorktreeMemo> {
 export async function setWorktreeMemo(path: string, memo: WorktreeMemo): Promise<void> {
   return invoke('set_worktree_memo', { path, memo });
 }
+
+// ============ GitHub Integration API ============
+
+export interface GitHubConfig {
+  config_type: 'personal' | 'enterprise';
+  token: string;
+  host?: string;
+  username?: string;
+}
+
+export interface ValidateResult {
+  valid: boolean;
+  username?: string;
+  error?: string;
+}
+
+export interface PullRequestInfo {
+  number: number;
+  title: string;
+  state: string;
+  merged: boolean;
+  draft: boolean;
+  url: string;
+  review_decision?: string;
+  checks_status?: string;
+}
+
+export async function getGitHubConfig(): Promise<GitHubConfig | null> {
+  return invoke('get_github_config');
+}
+
+export async function setGitHubConfig(config: GitHubConfig): Promise<void> {
+  return invoke('set_github_config', { config });
+}
+
+export async function removeGitHubConfig(): Promise<void> {
+  return invoke('remove_github_config');
+}
+
+export async function validateGitHubToken(config: GitHubConfig): Promise<ValidateResult> {
+  return invoke('validate_github_token', { config });
+}
+
+export async function fetchPullRequests(
+  owner: string,
+  repo: string,
+  branch: string
+): Promise<PullRequestInfo[]> {
+  return invoke('fetch_pull_requests', { owner, repo, branch });
+}
+
+// ============ Jira Integration API ============
+
+export interface JiraConfig {
+  host: string;
+  email: string;
+  api_token: string;
+  display_name?: string;
+}
+
+export interface JiraIssueInfo {
+  key: string;
+  summary: string;
+  status: string;
+  status_category: string;
+  url: string;
+}
+
+export async function getJiraConfig(): Promise<JiraConfig | null> {
+  return invoke('get_jira_config');
+}
+
+export async function setJiraConfig(config: JiraConfig): Promise<void> {
+  return invoke('set_jira_config', { config });
+}
+
+export async function removeJiraConfig(): Promise<void> {
+  return invoke('remove_jira_config');
+}
+
+export async function validateJiraCredentials(config: JiraConfig): Promise<ValidateResult> {
+  return invoke('validate_jira_credentials', { config });
+}
+
+export async function fetchJiraIssue(issueKey: string): Promise<JiraIssueInfo | null> {
+  return invoke('fetch_jira_issue', { issueKey });
+}

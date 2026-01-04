@@ -1,22 +1,87 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, X } from 'lucide-react';
+import * as api from '@/lib/api';
 
 export function WorktreeSettings() {
   const [pathTemplate, setPathTemplate] = useState('{project}.worktrees/{branch}-{description}');
   const [fetchBeforeCreate, setFetchBeforeCreate] = useState(true);
-  const [copyPaths, setCopyPaths] = useState<string[]>(['.env', 'config/local.json']);
+  const [copyPaths, setCopyPaths] = useState<string[]>([]);
   const [newCopyPath, setNewCopyPath] = useState('');
+  const [loading, setLoading] = useState(true);
 
-  const addCopyPath = () => {
-    if (newCopyPath.trim() && !copyPaths.includes(newCopyPath.trim())) {
-      setCopyPaths([...copyPaths, newCopyPath.trim()]);
-      setNewCopyPath('');
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const settings = await api.getSettings();
+      setPathTemplate(settings.default_worktree_template || '{project}.worktrees/{branch}-{description}');
+      setFetchBeforeCreate(settings.fetch_before_create ?? true);
+      setCopyPaths(settings.copy_paths || []);
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const removeCopyPath = (path: string) => {
-    setCopyPaths(copyPaths.filter((p) => p !== path));
+  const handlePathTemplateChange = async (value: string) => {
+    setPathTemplate(value);
   };
+
+  const handlePathTemplateBlur = async () => {
+    try {
+      await api.setDefaultWorktreeTemplate(pathTemplate);
+    } catch (err) {
+      console.error('Failed to save path template:', err);
+    }
+  };
+
+  const handleFetchBeforeCreate = async (enabled: boolean) => {
+    setFetchBeforeCreate(enabled);
+    try {
+      await api.setFetchBeforeCreate(enabled);
+    } catch (err) {
+      console.error('Failed to save fetch before create:', err);
+      setFetchBeforeCreate(!enabled);
+    }
+  };
+
+  const addCopyPath = async () => {
+    if (newCopyPath.trim() && !copyPaths.includes(newCopyPath.trim())) {
+      const newPaths = [...copyPaths, newCopyPath.trim()];
+      setCopyPaths(newPaths);
+      setNewCopyPath('');
+      try {
+        await api.setCopyPaths(newPaths);
+      } catch (err) {
+        console.error('Failed to save copy paths:', err);
+        setCopyPaths(copyPaths);
+      }
+    }
+  };
+
+  const removeCopyPath = async (path: string) => {
+    const newPaths = copyPaths.filter((p) => p !== path);
+    setCopyPaths(newPaths);
+    try {
+      await api.setCopyPaths(newPaths);
+    } catch (err) {
+      console.error('Failed to save copy paths:', err);
+      setCopyPaths(copyPaths);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="settings-section">
+        <div className="settings-group first">
+          <div className="text-muted-foreground text-xs">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="settings-section">
@@ -30,7 +95,8 @@ export function WorktreeSettings() {
             type="text"
             className="settings-input mt-1.5"
             value={pathTemplate}
-            onChange={(e) => setPathTemplate(e.target.value)}
+            onChange={(e) => handlePathTemplateChange(e.target.value)}
+            onBlur={handlePathTemplateBlur}
           />
         </div>
 
@@ -42,7 +108,7 @@ export function WorktreeSettings() {
             <input
               type="checkbox"
               checked={fetchBeforeCreate}
-              onChange={(e) => setFetchBeforeCreate(e.target.checked)}
+              onChange={(e) => handleFetchBeforeCreate(e.target.checked)}
             />
             <span className="toggle-slider" />
           </label>

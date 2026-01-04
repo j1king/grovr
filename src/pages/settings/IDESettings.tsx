@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import * as api from '@/lib/api';
 import type { IDEPreset } from '@/types';
 
 const ideOptions: { id: IDEPreset; name: string }[] = [
@@ -14,6 +15,66 @@ const ideOptions: { id: IDEPreset; name: string }[] = [
 export function IDESettings() {
   const [selectedIDE, setSelectedIDE] = useState<IDEPreset>('code');
   const [customCommand, setCustomCommand] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const settings = await api.getSettings();
+      if (settings.ide) {
+        setSelectedIDE((settings.ide.preset as IDEPreset) || 'code');
+        setCustomCommand(settings.ide.custom_command || '');
+      }
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleIDEChange = async (preset: IDEPreset) => {
+    setSelectedIDE(preset);
+    try {
+      await api.setIde({
+        type: preset === 'custom' ? 'custom' : 'preset',
+        preset,
+        custom_command: preset === 'custom' ? customCommand : undefined,
+      });
+    } catch (err) {
+      console.error('Failed to save IDE setting:', err);
+    }
+  };
+
+  const handleCustomCommandChange = (value: string) => {
+    setCustomCommand(value);
+  };
+
+  const handleCustomCommandBlur = async () => {
+    if (selectedIDE === 'custom') {
+      try {
+        await api.setIde({
+          type: 'custom',
+          preset: 'custom',
+          custom_command: customCommand,
+        });
+      } catch (err) {
+        console.error('Failed to save custom command:', err);
+      }
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="settings-section">
+        <div className="settings-group first">
+          <div className="text-muted-foreground text-xs">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="settings-section">
@@ -25,7 +86,7 @@ export function IDESettings() {
           <select
             className="settings-select"
             value={selectedIDE}
-            onChange={(e) => setSelectedIDE(e.target.value as IDEPreset)}
+            onChange={(e) => handleIDEChange(e.target.value as IDEPreset)}
           >
             {ideOptions.map((ide) => (
               <option key={ide.id} value={ide.id}>{ide.name}</option>
@@ -44,7 +105,8 @@ export function IDESettings() {
               className="settings-input mt-1.5"
               placeholder="/usr/local/bin/my-ide {path}"
               value={customCommand}
-              onChange={(e) => setCustomCommand(e.target.value)}
+              onChange={(e) => handleCustomCommandChange(e.target.value)}
+              onBlur={handleCustomCommandBlur}
             />
           </div>
         )}

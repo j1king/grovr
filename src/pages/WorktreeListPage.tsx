@@ -11,10 +11,15 @@ import {
   Terminal,
   GitBranchPlus,
   Pencil,
+  ExternalLink,
+  GitPullRequest,
+  CircleDot,
+  GitMerge,
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import * as api from '@/lib/api';
 import type { Project, Worktree } from '@/types';
+import type { PullRequestInfo, JiraIssueInfo } from '@/lib/api';
 
 interface WorktreeListPageProps {
   onOpenSettings: () => void;
@@ -24,6 +29,30 @@ interface WorktreeListPageProps {
   onEditWorktree: (worktree: Worktree, repoPath: string) => void;
 }
 
+// Extended worktree with PR and Jira info
+interface WorktreeWithIntegrations extends Worktree {
+  prInfo?: PullRequestInfo;
+  jiraInfo?: JiraIssueInfo;
+}
+
+interface ProjectWithIntegrations extends Omit<Project, 'worktrees'> {
+  worktrees: WorktreeWithIntegrations[];
+}
+
+// Parse GitHub remote URL to get owner/repo
+function parseGitHubRemote(repoPath: string): { owner: string; repo: string } | null {
+  // Try to extract from path (e.g., /Users/x/projects/owner/repo)
+  // For now, just use the last two path components as a fallback
+  const parts = repoPath.split('/').filter(Boolean);
+  if (parts.length >= 2) {
+    return {
+      owner: parts[parts.length - 2],
+      repo: parts[parts.length - 1],
+    };
+  }
+  return null;
+}
+
 export function WorktreeListPage({
   onOpenSettings,
   onOpenProjectSettings,
@@ -31,52 +60,86 @@ export function WorktreeListPage({
   onCreateWorktree,
   onEditWorktree,
 }: WorktreeListPageProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [projects, setProjects] = useState<ProjectWithIntegrations[]>([]);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<api.BackendAppSettings | null>(null);
+  const [hasGitHub, setHasGitHub] = useState(false);
+  const [hasJira, setHasJira] = useState(false);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [settingsData, projectsData] = await Promise.all([
+      const [settingsData, projectsData, githubConfig, jiraConfig] = await Promise.all([
         api.getSettings(),
         api.getProjects(),
+        api.getGitHubConfig().catch(() => null),
+        api.getJiraConfig().catch(() => null),
       ]);
       setSettings(settingsData);
+      setHasGitHub(!!githubConfig);
+      setHasJira(!!jiraConfig);
 
       // Load worktrees for each project
-      const projectsWithWorktrees: Project[] = await Promise.all(
+      const projectsWithWorktrees: ProjectWithIntegrations[] = await Promise.all(
         projectsData.map(async (p) => {
           try {
             const worktrees = await api.getWorktrees(p.repo_path);
-            // Load memos for each worktree
-            const worktreesWithMemos = await Promise.all(
+            const remoteInfo = parseGitHubRemote(p.repo_path);
+
+            // Load memos and integration data for each worktree
+            const worktreesWithData: WorktreeWithIntegrations[] = await Promise.all(
               worktrees.map(async (w) => {
+                const result: WorktreeWithIntegrations = {
+                  path: w.path,
+                  branch: w.branch,
+                  isMain: w.is_main,
+                };
+
+                // Load memo
                 try {
                   const memo = await api.getWorktreeMemo(w.path);
-                  return {
-                    path: w.path,
-                    branch: w.branch,
-                    isMain: w.is_main,
-                    description: memo.description,
-                    issueNumber: memo.issue_number,
-                  };
+                  result.description = memo.description;
+                  result.issueNumber = memo.issue_number;
                 } catch {
-                  return {
-                    path: w.path,
-                    branch: w.branch,
-                    isMain: w.is_main,
-                  };
+                  // Ignore
                 }
+
+                // Load Jira info if configured and issue number exists
+                if (jiraConfig && result.issueNumber) {
+                  try {
+                    const jiraInfo = await api.fetchJiraIssue(result.issueNumber);
+                    if (jiraInfo) {
+                      result.jiraInfo = jiraInfo;
+                    }
+                  } catch {
+                    // Ignore
+                  }
+                }
+
+                // Load PR info if GitHub configured
+                if (githubConfig && remoteInfo && !w.is_main) {
+                  try {
+                    const prs = await api.fetchPullRequests(remoteInfo.owner, remoteInfo.repo, w.branch);
+                    if (prs.length > 0) {
+                      // Get the most recent/relevant PR
+                      result.prInfo = prs[0];
+                    }
+                  } catch {
+                    // Ignore
+                  }
+                }
+
+                return result;
               })
             );
+
             return {
               name: p.name,
               repoPath: p.repo_path,
               defaultBaseBranch: p.default_base_branch,
               emoji: p.emoji,
-              worktrees: worktreesWithMemos,
+              worktrees: worktreesWithData,
             };
           } catch {
             return {
@@ -144,9 +207,8 @@ export function WorktreeListPage({
   // Check if any worktree has data for optional columns
   const allWorktrees = projects.flatMap((p) => p.worktrees);
   const hasAnyDescription = allWorktrees.some((w) => w.description);
-  // For now, GitHub and Jira are placeholders
-  const hasAnyGitHub = false;
-  const hasAnyJira = false;
+  const hasAnyGitHub = hasGitHub && allWorktrees.some((w) => w.prInfo);
+  const hasAnyJira = hasJira && allWorktrees.some((w) => w.jiraInfo);
 
   return (
     <div className="h-full flex flex-col">
@@ -207,7 +269,7 @@ export function WorktreeListPage({
 }
 
 interface ProjectCardProps {
-  project: Project;
+  project: ProjectWithIntegrations;
   expanded: boolean;
   onToggle: () => void;
   onOpenProjectSettings: (project: Project) => void;
@@ -298,7 +360,7 @@ function ProjectCard({
 }
 
 interface WorktreeRowProps {
-  worktree: Worktree;
+  worktree: WorktreeWithIntegrations;
   onOpenIde: (path: string) => void;
   onOpenFinder: (path: string) => void;
   onOpenTerminal: (path: string) => void;
@@ -331,6 +393,31 @@ function WorktreeRow({
     setShowActions(!showActions);
   };
 
+  const getPRIcon = (pr: PullRequestInfo) => {
+    if (pr.merged) return <GitMerge size={12} className="text-purple-500" />;
+    if (pr.draft) return <GitPullRequest size={12} className="text-muted-foreground" />;
+    if (pr.state === 'open') return <GitPullRequest size={12} className="text-green-500" />;
+    return <GitPullRequest size={12} className="text-red-500" />;
+  };
+
+  const getPRLabel = (pr: PullRequestInfo) => {
+    if (pr.merged) return 'Merged';
+    if (pr.draft) return 'Draft';
+    if (pr.state === 'open') return 'Open';
+    return 'Closed';
+  };
+
+  const getJiraStatusColor = (category: string) => {
+    switch (category) {
+      case 'done':
+        return 'text-green-500';
+      case 'indeterminate':
+        return 'text-blue-500';
+      default:
+        return 'text-muted-foreground';
+    }
+  };
+
   return (
     <div
       className="worktree-row"
@@ -356,14 +443,46 @@ function WorktreeRow({
       {/* GitHub Status - only show if any worktree has GitHub data */}
       {showGitHub && (
         <div className="worktree-col-github">
-          <span className="text-muted-light">—</span>
+          {worktree.prInfo ? (
+            <a
+              href={worktree.prInfo.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="integration-link"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {getPRIcon(worktree.prInfo)}
+              <span className="integration-link-text">
+                #{worktree.prInfo.number} {getPRLabel(worktree.prInfo)}
+              </span>
+              <ExternalLink size={10} className="integration-link-icon" />
+            </a>
+          ) : (
+            <span className="text-muted-light">—</span>
+          )}
         </div>
       )}
 
       {/* Jira Status - only show if any worktree has Jira data */}
       {showJira && (
         <div className="worktree-col-jira">
-          <span className="text-muted-light">—</span>
+          {worktree.jiraInfo ? (
+            <a
+              href={worktree.jiraInfo.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="integration-link"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <CircleDot size={12} className={getJiraStatusColor(worktree.jiraInfo.status_category)} />
+              <span className="integration-link-text">
+                {worktree.jiraInfo.key}
+              </span>
+              <ExternalLink size={10} className="integration-link-icon" />
+            </a>
+          ) : (
+            <span className="text-muted-light">—</span>
+          )}
         </div>
       )}
 

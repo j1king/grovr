@@ -1,9 +1,68 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import * as api from '@/lib/api';
 
 export function GeneralSettings() {
   const [launchAtStartup, setLaunchAtStartup] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState<string>('5');
   const [skipConfirm, setSkipConfirm] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const settings = await api.getSettings();
+      setLaunchAtStartup(settings.launch_at_startup ?? false);
+      setAutoRefresh(settings.refresh_interval_minutes === 0 ? 'off' : String(settings.refresh_interval_minutes));
+      setSkipConfirm(settings.skip_open_ide_confirm ?? false);
+    } catch (err) {
+      console.error('Failed to load settings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLaunchAtStartup = async (enabled: boolean) => {
+    setLaunchAtStartup(enabled);
+    try {
+      await api.setLaunchAtStartup(enabled);
+    } catch (err) {
+      console.error('Failed to save launch at startup:', err);
+      setLaunchAtStartup(!enabled); // Revert on error
+    }
+  };
+
+  const handleAutoRefresh = async (value: string) => {
+    setAutoRefresh(value);
+    try {
+      const minutes = value === 'off' ? 0 : parseInt(value, 10);
+      await api.setRefreshIntervalMinutes(minutes);
+    } catch (err) {
+      console.error('Failed to save refresh interval:', err);
+    }
+  };
+
+  const handleSkipConfirm = async (skip: boolean) => {
+    setSkipConfirm(skip);
+    try {
+      await api.setSkipOpenIdeConfirm(skip);
+    } catch (err) {
+      console.error('Failed to save skip confirm:', err);
+      setSkipConfirm(!skip); // Revert on error
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="settings-section">
+        <div className="settings-group first">
+          <div className="text-muted-foreground text-xs">Loading...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="settings-section">
@@ -18,7 +77,7 @@ export function GeneralSettings() {
             <input
               type="checkbox"
               checked={launchAtStartup}
-              onChange={(e) => setLaunchAtStartup(e.target.checked)}
+              onChange={(e) => handleLaunchAtStartup(e.target.checked)}
             />
             <span className="toggle-slider" />
           </label>
@@ -35,7 +94,7 @@ export function GeneralSettings() {
           <select
             className="settings-select"
             value={autoRefresh}
-            onChange={(e) => setAutoRefresh(e.target.value)}
+            onChange={(e) => handleAutoRefresh(e.target.value)}
           >
             <option value="off">Off</option>
             <option value="1">1 minute</option>
@@ -57,7 +116,7 @@ export function GeneralSettings() {
             <input
               type="checkbox"
               checked={skipConfirm}
-              onChange={(e) => setSkipConfirm(e.target.checked)}
+              onChange={(e) => handleSkipConfirm(e.target.checked)}
             />
             <span className="toggle-slider" />
           </label>

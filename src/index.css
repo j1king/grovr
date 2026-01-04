@@ -25,23 +25,23 @@
   }
 
   .dark {
-    --background: 240 10% 3.9%;
+    --background: 240 6% 10%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 6%;
+    --card: 240 6% 13%;
     --card-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 240 4% 18%;
     --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
+    --muted: 240 4% 18%;
     --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
+    --accent: 240 4% 20%;
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
+    --border: 240 4% 20%;
     --ring: 240 4.9% 83.9%;
-    --sidebar-bg: 240 6% 6%;
+    --sidebar-bg: 240 5% 14%;
   }
 }
 
@@ -123,15 +123,15 @@ html, body, #root {
 }
 
 .project-header {
-  @apply flex items-center justify-between;
+  @apply flex items-center justify-between py-1.5 px-2 rounded-md transition-colors;
+  -webkit-app-region: no-drag;
+}
+.project-header:hover {
+  background: hsl(var(--accent) / 0.5);
 }
 
 .project-toggle {
-  @apply flex-1 flex items-center gap-1.5 py-1.5 pl-2 pr-2 text-left transition-colors text-sm rounded-md;
-  -webkit-app-region: no-drag;
-}
-.project-toggle:hover {
-  background: hsl(var(--accent) / 0.5);
+  @apply flex-1 flex items-center gap-1.5 text-left text-sm;
 }
 
 .project-chevron {
@@ -182,6 +182,18 @@ html, body, #root {
 .worktree-col-github { @apply w-[85px] flex justify-center flex-shrink-0; }
 .worktree-col-jira { @apply w-[85px] flex justify-center flex-shrink-0; }
 .worktree-col-actions { @apply relative w-[28px] flex justify-end flex-shrink-0; }
+
+/* Integration links (GitHub PR, Jira Issue) */
+.integration-link {
+  @apply flex items-center gap-1 text-xs transition-colors;
+  color: hsl(var(--muted-foreground));
+}
+.integration-link:hover {
+  color: hsl(var(--foreground));
+}
+.integration-link-text { @apply truncate max-w-[60px]; }
+.integration-link-icon { @apply opacity-0 transition-opacity flex-shrink-0; }
+.integration-link:hover .integration-link-icon { @apply opacity-100; }
 
 .worktree-actions-dropdown {
   @apply absolute right-0 top-full mt-1 py-1 rounded-lg shadow-lg z-50 min-w-[160px];
@@ -546,6 +558,15 @@ html, body, #root {
   border: 1px solid hsl(var(--border));
 }
 .btn-secondary-sm:hover { background: hsl(var(--accent)); }
+.btn-secondary-sm:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.btn-primary-sm {
+  @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+}
+.btn-primary-sm:hover { opacity: 0.9; }
+.btn-primary-sm:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-icon {
   @apply w-7 h-7 rounded-md flex items-center justify-center transition-colors flex-shrink-0;
