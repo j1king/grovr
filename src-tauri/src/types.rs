@@ -116,6 +116,8 @@ pub struct AppSettings {
     pub jira_configs: Vec<JiraConfigMeta>,
     #[serde(default)]
     pub worktree_memos: HashMap<String, WorktreeMemo>,
+    #[serde(default)]
+    pub global_shortcut: Option<String>,
 }
 
 fn default_theme() -> String {

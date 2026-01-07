@@ -50,6 +50,7 @@ export interface BackendAppSettings {
   projects: BackendProjectConfig[];
   github_configs: unknown[];
   jira_configs: unknown[];
+  global_shortcut?: string;
 }
 
 // ============ Settings API ============
@@ -100,6 +101,10 @@ export async function setSkipOpenIdeConfirm(skip: boolean): Promise<void> {
 
 export async function setOnboardingCompleted(completed: boolean): Promise<void> {
   return invoke('set_onboarding_completed', { completed });
+}
+
+export async function setGlobalShortcut(shortcut: string | null): Promise<void> {
+  return invoke('set_global_shortcut', { shortcut });
 }
 
 // ============ Projects API ============

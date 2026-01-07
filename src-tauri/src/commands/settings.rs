@@ -1,7 +1,8 @@
 use crate::types::{AppSettings, IdeConfig, WorktreeMemo};
-use tauri::State;
+use tauri::{Manager, State};
 #[cfg(not(target_os = "macos"))]
 use tauri_plugin_autostart::ManagerExt;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 use tauri_plugin_store::StoreExt;
 use std::sync::Mutex;
 
@@ -201,5 +202,59 @@ pub fn set_worktree_memo(
 ) -> Result<(), String> {
     let mut settings = state.0.lock().map_err(|e| e.to_string())?;
     settings.worktree_memos.insert(path, memo);
+    save_settings(&app, &settings)
+}
+
+fn toggle_window_visibility(app: &tauri::AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        match window.is_visible() {
+            Ok(true) => {
+                let _ = window.hide();
+            }
+            Ok(false) | Err(_) => {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }
+    }
+}
+
+pub fn register_global_shortcut(app: &tauri::AppHandle, shortcut: &str) -> Result<(), String> {
+    let app_handle = app.clone();
+    app.global_shortcut()
+        .on_shortcut(shortcut, move |_app, _shortcut, event| {
+            if event.state == ShortcutState::Pressed {
+                toggle_window_visibility(&app_handle);
+            }
+        })
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn set_global_shortcut(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    shortcut: Option<String>,
+) -> Result<(), String> {
+    // 1. Unregister existing shortcut
+    let old_shortcut = {
+        let settings = state.0.lock().map_err(|e| e.to_string())?;
+        settings.global_shortcut.clone()
+    };
+
+    if let Some(ref old) = old_shortcut {
+        if let Ok(parsed) = old.parse::<Shortcut>() {
+            let _ = app.global_shortcut().unregister(parsed);
+        }
+    }
+
+    // 2. Register new shortcut
+    if let Some(ref new_shortcut) = shortcut {
+        register_global_shortcut(&app, new_shortcut)?;
+    }
+
+    // 3. Save settings
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    settings.global_shortcut = shortcut;
     save_settings(&app, &settings)
 }

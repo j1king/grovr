@@ -475,6 +475,43 @@ html, body, #root {
   ring-color: hsl(var(--ring));
 }
 
+/* Shortcut Recorder */
+.shortcut-recorder {
+  @apply flex items-center gap-2;
+}
+.shortcut-display {
+  @apply px-2.5 py-1 rounded-md text-xs cursor-pointer min-w-[120px] text-center flex items-center justify-center gap-1.5;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+}
+.dark .shortcut-display {
+  background-color: hsl(240 6% 10%);
+}
+.shortcut-display:hover:not(.recording) {
+  background-color: hsl(var(--accent));
+}
+.shortcut-display.recording {
+  border-color: hsl(0 72% 51%);
+  background-color: hsl(0 72% 51% / 0.1);
+  cursor: default;
+}
+.recording-indicator {
+  @apply w-2 h-2 rounded-full flex-shrink-0;
+  background-color: hsl(0 72% 51%);
+  animation: pulse-recording 1s ease-in-out infinite;
+}
+@keyframes pulse-recording {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.shortcut-keys {
+  @apply font-mono;
+  color: hsl(var(--foreground));
+}
+.shortcut-placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
 .settings-input {
   @apply w-full px-2.5 py-1.5 rounded-md text-xs;
   background: hsl(var(--background));

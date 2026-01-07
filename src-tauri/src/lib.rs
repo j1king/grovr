@@ -11,8 +11,9 @@ mod secure_store;
 mod types;
 
 use commands::settings::{
-    get_settings, get_worktree_memo, init_settings, set_clipboard_parse_patterns, set_copy_paths,
-    set_default_worktree_template, set_fetch_before_create, set_ide, set_last_used_project,
+    get_settings, get_worktree_memo, init_settings, register_global_shortcut,
+    set_clipboard_parse_patterns, set_copy_paths, set_default_worktree_template,
+    set_fetch_before_create, set_global_shortcut, set_ide, set_last_used_project,
     set_launch_at_startup, set_onboarding_completed, set_refresh_interval_minutes,
     set_skip_open_ide_confirm, set_theme, set_worktree_memo,
 };
@@ -62,7 +63,8 @@ pub fn run() {
         .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_window_state::Builder::new().build())
-        .plugin(tauri_plugin_liquid_glass::init());
+        .plugin(tauri_plugin_liquid_glass::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
 
     // Only use autostart plugin on non-macOS (Windows/Linux)
     // macOS uses SMAppService via smappservice-rs for native login item management
@@ -79,6 +81,14 @@ pub fn run() {
         .setup(|app| {
             // Initialize settings state
             let settings_state = init_settings(app.handle());
+
+            // Register saved global shortcut on startup
+            if let Ok(settings) = settings_state.0.lock() {
+                if let Some(ref shortcut) = settings.global_shortcut {
+                    let _ = register_global_shortcut(app.handle(), shortcut);
+                }
+            }
+
             app.manage(settings_state);
 
             // Apply window effects
@@ -102,6 +112,7 @@ pub fn run() {
             set_onboarding_completed,
             get_worktree_memo,
             set_worktree_memo,
+            set_global_shortcut,
             // Projects
             get_projects,
             add_project,
