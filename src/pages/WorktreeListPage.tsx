@@ -472,7 +472,18 @@ function ProjectCard({
 
       {/* Worktree Table */}
       {expanded && (
-        <div className="worktree-table">
+        <div
+          className="worktree-table"
+          style={{
+            gridTemplateColumns: [
+              'auto',
+              showDescription ? 'minmax(0, 1fr)' : null,
+              showGitHub ? '100px' : null,
+              showJira ? '100px' : null,
+              '28px',
+            ].filter(Boolean).join(' '),
+          }}
+        >
           {project.worktrees.length === 0 ? (
             <div className="text-muted text-sm py-2 px-3">No worktrees found</div>
           ) : (
