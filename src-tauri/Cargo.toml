@@ -54,3 +54,6 @@ tauri-plugin-liquid-glass = "0.1"
 cocoa = "0.26"
 objc = "0.2"
 smappservice-rs = "0.1"
+
+[dev-dependencies]
+tempfile = "3"

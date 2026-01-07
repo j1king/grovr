@@ -34,6 +34,7 @@ import {
   CircleDot,
   GitMerge,
   GripVertical,
+  Trash2,
 } from 'lucide-react';
 import { message, ask } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -289,6 +290,51 @@ export function WorktreeListPage({
     }
   };
 
+  const handleDeleteWorktree = async (worktree: Worktree, repoPath: string) => {
+    const confirmed = await ask(
+      `Are you sure you want to delete the worktree "${worktree.branch}"?\n\nThis will remove the worktree directory and its contents.`,
+      {
+        title: 'Delete Worktree',
+        kind: 'warning',
+        okLabel: 'Delete',
+        cancelLabel: 'Cancel',
+      }
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.removeWorktree(repoPath, worktree.path, false);
+      loadData();
+    } catch (err) {
+      console.error('Failed to delete worktree:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      // If it fails due to uncommitted changes, offer force delete
+      const forceDelete = await ask(
+        `Failed to delete worktree: ${errorMessage}\n\nDo you want to force delete? This will discard any uncommitted changes.`,
+        {
+          title: 'Force Delete',
+          kind: 'warning',
+          okLabel: 'Force Delete',
+          cancelLabel: 'Cancel',
+        }
+      );
+
+      if (forceDelete) {
+        try {
+          await api.removeWorktree(repoPath, worktree.path, true);
+          loadData();
+        } catch (forceErr) {
+          const forceErrorMessage = forceErr instanceof Error ? forceErr.message : String(forceErr);
+          await message(`Failed to force delete worktree: ${forceErrorMessage}`, {
+            title: 'Error',
+            kind: 'error',
+          });
+        }
+      }
+    }
+  };
+
   // Check if any worktree has data for optional columns
   const allWorktrees = projects.flatMap((p) => p.worktrees);
   const hasAnyDescription = allWorktrees.some((w) => w.description);
@@ -354,6 +400,7 @@ export function WorktreeListPage({
                   onOpenTerminal={handleOpenTerminal}
                   onCreateWorktree={() => onCreateWorktree(project)}
                   onEditWorktree={onEditWorktree}
+                  onDeleteWorktree={handleDeleteWorktree}
                   showDescription={hasAnyDescription}
                   showGitHub={hasAnyGitHub}
                   showJira={hasAnyJira}
@@ -379,6 +426,7 @@ interface ProjectCardProps {
   onOpenTerminal: (path: string) => void;
   onCreateWorktree: () => void;
   onEditWorktree: (worktree: Worktree, repoPath: string) => void;
+  onDeleteWorktree: (worktree: Worktree, repoPath: string) => void;
   showDescription: boolean;
   showGitHub: boolean;
   showJira: boolean;
@@ -421,6 +469,7 @@ function ProjectCard({
   onOpenTerminal,
   onCreateWorktree,
   onEditWorktree,
+  onDeleteWorktree,
   showDescription,
   showGitHub,
   showJira,
@@ -503,6 +552,7 @@ function ProjectCard({
                   onOpenFinder={onOpenFinder}
                   onOpenTerminal={onOpenTerminal}
                   onEdit={() => onEditWorktree(worktree, project.repoPath)}
+                  onDelete={() => onDeleteWorktree(worktree, project.repoPath)}
                   showDescription={showDescription}
                   showGitHub={showGitHub}
                   showJira={showJira}
@@ -522,6 +572,7 @@ interface WorktreeRowProps {
   onOpenFinder: (path: string) => void;
   onOpenTerminal: (path: string) => void;
   onEdit: () => void;
+  onDelete: () => void;
   showDescription: boolean;
   showGitHub: boolean;
   showJira: boolean;
@@ -534,6 +585,7 @@ function WorktreeRow({
   onOpenFinder,
   onOpenTerminal,
   onEdit,
+  onDelete,
   showDescription,
   showGitHub,
   showJira,
@@ -735,6 +787,22 @@ function WorktreeRow({
               <Terminal size={14} />
               <span>Open Terminal</span>
             </button>
+            {!worktree.isMain && (
+              <>
+                <div className="worktree-dropdown-divider" />
+                <button
+                  className="worktree-dropdown-item worktree-dropdown-item-danger"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowActions(false);
+                    onDelete();
+                  }}
+                >
+                  <Trash2 size={14} />
+                  <span>Delete</span>
+                </button>
+              </>
+            )}
           </div>,
           document.body
         )}

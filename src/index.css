@@ -278,6 +278,16 @@ html, body, #root {
 .worktree-dropdown-item:hover {
   background: hsl(var(--accent));
 }
+.worktree-dropdown-item-danger {
+  color: hsl(var(--destructive));
+}
+.worktree-dropdown-item-danger:hover {
+  background: hsl(var(--destructive) / 0.1);
+}
+.worktree-dropdown-divider {
+  @apply my-1 h-px;
+  background: hsl(var(--border));
+}
 
 .worktree-branch-icon { @apply text-muted-foreground flex-shrink-0; }
 .worktree-branch-name { @apply font-mono text-xs truncate; }

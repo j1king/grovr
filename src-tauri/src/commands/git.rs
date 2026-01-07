@@ -508,3 +508,280 @@ fn copy_dir_recursive(src: &Path, dst: &Path) -> Result<(), String> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn setup_test_repo() -> (TempDir, String) {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let repo_path = temp_dir.path().join("repo");
+        fs::create_dir_all(&repo_path).expect("Failed to create repo dir");
+
+        // Initialize git repo
+        Command::new("git")
+            .args(["init"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to init git repo");
+
+        Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to set git email");
+
+        Command::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to set git name");
+
+        // Create initial commit
+        fs::write(repo_path.join("README.md"), "# Test").expect("Failed to write README");
+        Command::new("git")
+            .args(["add", "-A"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to git add");
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to git commit");
+
+        let repo_path_str = repo_path.to_string_lossy().to_string();
+        (temp_dir, repo_path_str)
+    }
+
+    #[test]
+    fn test_get_worktrees_initial() {
+        let (_temp_dir, repo_path) = setup_test_repo();
+
+        let worktrees = get_worktrees(repo_path).expect("Failed to get worktrees");
+
+        assert_eq!(worktrees.len(), 1);
+        assert!(worktrees[0].is_main);
+    }
+
+    #[test]
+    fn test_create_and_get_worktree() {
+        let (temp_dir, repo_path) = setup_test_repo();
+        let worktree_path = temp_dir.path().join("worktrees/feature-test");
+
+        // Create worktree
+        create_worktree(
+            repo_path.clone(),
+            worktree_path.to_string_lossy().to_string(),
+            "feature-test".to_string(),
+            "main".to_string(),
+        )
+        .expect("Failed to create worktree");
+
+        // Verify worktree exists
+        let worktrees = get_worktrees(repo_path).expect("Failed to get worktrees");
+        assert_eq!(worktrees.len(), 2);
+
+        let feature_wt = worktrees.iter().find(|w| w.branch == "feature-test");
+        assert!(feature_wt.is_some());
+        assert!(!feature_wt.unwrap().is_main);
+    }
+
+    #[test]
+    fn test_create_worktree_existing_branch() {
+        let (temp_dir, repo_path) = setup_test_repo();
+
+        // Create a branch first
+        Command::new("git")
+            .args(["branch", "existing-branch"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to create branch");
+
+        let worktree_path = temp_dir.path().join("worktrees/existing-branch");
+
+        // Create worktree from existing branch
+        create_worktree_existing_branch(
+            repo_path.clone(),
+            worktree_path.to_string_lossy().to_string(),
+            "existing-branch".to_string(),
+        )
+        .expect("Failed to create worktree from existing branch");
+
+        // Verify
+        let worktrees = get_worktrees(repo_path).expect("Failed to get worktrees");
+        assert_eq!(worktrees.len(), 2);
+
+        let existing_wt = worktrees.iter().find(|w| w.branch == "existing-branch");
+        assert!(existing_wt.is_some());
+    }
+
+    #[test]
+    fn test_remove_worktree() {
+        let (temp_dir, repo_path) = setup_test_repo();
+        let worktree_path = temp_dir.path().join("worktrees/to-delete");
+
+        // Create worktree
+        create_worktree(
+            repo_path.clone(),
+            worktree_path.to_string_lossy().to_string(),
+            "to-delete".to_string(),
+            "main".to_string(),
+        )
+        .expect("Failed to create worktree");
+
+        // Verify it exists
+        let worktrees = get_worktrees(repo_path.clone()).expect("Failed to get worktrees");
+        assert_eq!(worktrees.len(), 2);
+
+        // Remove worktree
+        remove_worktree(
+            repo_path.clone(),
+            worktree_path.to_string_lossy().to_string(),
+            false,
+        )
+        .expect("Failed to remove worktree");
+
+        // Verify it's gone
+        let worktrees = get_worktrees(repo_path).expect("Failed to get worktrees");
+        assert_eq!(worktrees.len(), 1);
+    }
+
+    #[test]
+    fn test_remove_worktree_force() {
+        let (temp_dir, repo_path) = setup_test_repo();
+        let worktree_path = temp_dir.path().join("worktrees/dirty-wt");
+
+        // Create worktree
+        create_worktree(
+            repo_path.clone(),
+            worktree_path.to_string_lossy().to_string(),
+            "dirty-wt".to_string(),
+            "main".to_string(),
+        )
+        .expect("Failed to create worktree");
+
+        // Make it dirty (uncommitted changes)
+        fs::write(worktree_path.join("dirty.txt"), "uncommitted").expect("Failed to write dirty file");
+
+        // Try to remove without force - should fail
+        let result = remove_worktree(
+            repo_path.clone(),
+            worktree_path.to_string_lossy().to_string(),
+            false,
+        );
+        assert!(result.is_err());
+
+        // Remove with force - should succeed
+        remove_worktree(
+            repo_path.clone(),
+            worktree_path.to_string_lossy().to_string(),
+            true,
+        )
+        .expect("Failed to force remove worktree");
+
+        // Verify it's gone
+        let worktrees = get_worktrees(repo_path).expect("Failed to get worktrees");
+        assert_eq!(worktrees.len(), 1);
+    }
+
+    #[test]
+    fn test_get_worktree_status_clean() {
+        let (_temp_dir, repo_path) = setup_test_repo();
+
+        let status = get_worktree_status(repo_path).expect("Failed to get status");
+
+        assert!(!status.has_changes);
+        assert_eq!(status.staged, 0);
+        assert_eq!(status.unstaged, 0);
+        assert_eq!(status.untracked, 0);
+    }
+
+    #[test]
+    fn test_get_worktree_status_dirty() {
+        let (_temp_dir, repo_path) = setup_test_repo();
+
+        // Create untracked file
+        fs::write(Path::new(&repo_path).join("untracked.txt"), "untracked").expect("Failed to write");
+
+        // Create modified file
+        fs::write(Path::new(&repo_path).join("README.md"), "# Modified").expect("Failed to modify");
+
+        let status = get_worktree_status(repo_path).expect("Failed to get status");
+
+        assert!(status.has_changes);
+        assert_eq!(status.untracked, 1);
+        assert_eq!(status.unstaged, 1);
+    }
+
+    #[test]
+    fn test_get_branches() {
+        let (_temp_dir, repo_path) = setup_test_repo();
+
+        // Create additional branches
+        Command::new("git")
+            .args(["branch", "feature-1"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to create branch");
+        Command::new("git")
+            .args(["branch", "feature-2"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to create branch");
+
+        let branches = get_branches(repo_path, false).expect("Failed to get branches");
+
+        assert!(branches.len() >= 3); // main + feature-1 + feature-2
+        assert!(branches.iter().any(|b| b.name == "main" || b.name == "master"));
+        assert!(branches.iter().any(|b| b.name == "feature-1"));
+        assert!(branches.iter().any(|b| b.name == "feature-2"));
+    }
+
+    #[test]
+    fn test_rename_branch() {
+        let (_temp_dir, repo_path) = setup_test_repo();
+
+        // Create a branch
+        Command::new("git")
+            .args(["branch", "old-name"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to create branch");
+
+        // Rename it
+        rename_branch(repo_path.clone(), "old-name".to_string(), "new-name".to_string())
+            .expect("Failed to rename branch");
+
+        // Verify
+        let branches = get_branches(repo_path, false).expect("Failed to get branches");
+        assert!(!branches.iter().any(|b| b.name == "old-name"));
+        assert!(branches.iter().any(|b| b.name == "new-name"));
+    }
+
+    #[test]
+    fn test_delete_branch() {
+        let (_temp_dir, repo_path) = setup_test_repo();
+
+        // Create a branch
+        Command::new("git")
+            .args(["branch", "to-delete"])
+            .current_dir(&repo_path)
+            .output()
+            .expect("Failed to create branch");
+
+        // Verify it exists
+        let branches = get_branches(repo_path.clone(), false).expect("Failed to get branches");
+        assert!(branches.iter().any(|b| b.name == "to-delete"));
+
+        // Delete it
+        delete_branch(repo_path.clone(), "to-delete".to_string(), false)
+            .expect("Failed to delete branch");
+
+        // Verify it's gone
+        let branches = get_branches(repo_path, false).expect("Failed to get branches");
+        assert!(!branches.iter().any(|b| b.name == "to-delete"));
+    }
+}

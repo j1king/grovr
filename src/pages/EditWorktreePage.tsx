@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { Trash2 } from 'lucide-react';
+import { ask, message } from '@tauri-apps/plugin-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import * as api from '@/lib/api';
 import type { Worktree } from '@/types';
@@ -55,6 +57,54 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!repoPath) return;
+
+    const confirmed = await ask(
+      `Are you sure you want to delete the worktree "${worktree.branch}"?\n\nThis will remove the worktree directory and its contents.`,
+      {
+        title: 'Delete Worktree',
+        kind: 'warning',
+        okLabel: 'Delete',
+        cancelLabel: 'Cancel',
+      }
+    );
+    if (!confirmed) return;
+
+    try {
+      await api.removeWorktree(repoPath, worktree.path, false);
+      onSaved();
+      onBack();
+    } catch (err) {
+      console.error('Failed to delete worktree:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+
+      const forceDelete = await ask(
+        `Failed to delete worktree: ${errorMessage}\n\nDo you want to force delete? This will discard any uncommitted changes.`,
+        {
+          title: 'Force Delete',
+          kind: 'warning',
+          okLabel: 'Force Delete',
+          cancelLabel: 'Cancel',
+        }
+      );
+
+      if (forceDelete) {
+        try {
+          await api.removeWorktree(repoPath, worktree.path, true);
+          onSaved();
+          onBack();
+        } catch (forceErr) {
+          const forceErrorMessage = forceErr instanceof Error ? forceErr.message : String(forceErr);
+          await message(`Failed to force delete worktree: ${forceErrorMessage}`, {
+            title: 'Error',
+            kind: 'error',
+          });
+        }
+      }
     }
   };
 
@@ -147,6 +197,31 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
                 {saving ? 'Saving...' : 'Save'}
               </button>
             </div>
+
+            {/* Danger Zone */}
+            {!isMainBranch && (
+              <div className="danger-zone mt-8">
+                <h3 className="danger-zone-title">Danger Zone</h3>
+                <div className="danger-zone-content">
+                  <div className="danger-zone-item">
+                    <div>
+                      <div className="danger-zone-item-title">Delete Worktree</div>
+                      <div className="danger-zone-item-desc">
+                        Remove the worktree directory and its contents
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-danger"
+                      onClick={handleDelete}
+                    >
+                      <Trash2 size={14} />
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </ScrollArea>
