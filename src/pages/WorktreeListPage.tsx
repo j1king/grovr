@@ -250,10 +250,12 @@ export function WorktreeListPage({
     const customCommand = settings?.ide?.custom_command;
     const skipConfirm = settings?.skip_open_ide_confirm ?? false;
 
+    const ideName = preset === 'custom' ? 'IDE' : preset;
+
     // Show confirmation dialog unless skip is enabled
     if (!skipConfirm) {
       const folderName = path.split('/').pop() || path;
-      const confirmed = await ask(`Open "${folderName}" in ${preset}?`, {
+      const confirmed = await ask(`Open "${folderName}" in ${ideName}?`, {
         title: 'Open IDE',
         kind: 'info',
         okLabel: 'Open',
@@ -261,14 +263,13 @@ export function WorktreeListPage({
       });
       if (!confirmed) return;
     }
-
     try {
       await api.openIde(path, preset, customCommand);
     } catch (err) {
       console.error('Failed to open IDE:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
       await message(
-        `Failed to open IDE "${preset}".\n\nMake sure the IDE is installed and the command is available in your PATH.\n\nError: ${errorMessage}`,
+        `Failed to open ${ideName}.\n\nError: ${errorMessage}`,
         { title: 'IDE Error', kind: 'error' }
       );
     }

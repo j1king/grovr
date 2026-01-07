@@ -362,6 +362,7 @@ pub fn git_pull(worktree_path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn open_ide(path: String, ide_preset: String, custom_command: Option<String>) -> Result<(), String> {
+    let is_custom = ide_preset == "custom";
     let command = match ide_preset.as_str() {
         "code" => "code",
         "cursor" => "cursor",
@@ -375,17 +376,39 @@ pub fn open_ide(path: String, ide_preset: String, custom_command: Option<String>
 
     // Use login shell to access user's PATH environment
     // GUI apps don't inherit terminal PATH, so we need -l flag to load shell profile
-    #[cfg(target_os = "macos")]
-    Command::new("/bin/zsh")
-        .args(["-l", "-c", &format!("{} \"{}\"", command, path)])
-        .spawn()
-        .map_err(|e| format!("Failed to open IDE: {}", e))?;
+    let shell_cmd = format!("{} \"{}\"", command, path);
 
+    #[cfg(target_os = "macos")]
+    let shell = "/bin/zsh";
     #[cfg(not(target_os = "macos"))]
-    Command::new("sh")
-        .args(["-l", "-c", &format!("{} \"{}\"", command, path)])
-        .spawn()
-        .map_err(|e| format!("Failed to open IDE: {}", e))?;
+    let shell = "sh";
+
+    if is_custom {
+        // For custom commands, wait for completion and check status
+        let output = Command::new(shell)
+            .args(["-l", "-c", &shell_cmd])
+            .output()
+            .map_err(|e| format!("Failed to run custom command: {}", e))?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let error_msg = if !stderr.is_empty() {
+                stderr.to_string()
+            } else if !stdout.is_empty() {
+                stdout.to_string()
+            } else {
+                format!("Command exited with status: {}", output.status)
+            };
+            return Err(error_msg);
+        }
+    } else {
+        // For preset IDEs, spawn without waiting (they stay open)
+        Command::new(shell)
+            .args(["-l", "-c", &shell_cmd])
+            .spawn()
+            .map_err(|e| format!("Failed to open IDE: {}", e))?;
+    }
 
     Ok(())
 }
