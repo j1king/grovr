@@ -301,7 +301,9 @@ export function WorktreeListPage({
       {/* Titlebar drag area with actions */}
       <div data-tauri-drag-region className="titlebar">
         <div className="titlebar-spacer" />
-        <span data-tauri-drag-region className="titlebar-title">Grovr</span>
+        <span data-tauri-drag-region className="titlebar-title">
+          Grovr{import.meta.env.VITE_PREVIEW_WORKTREE && ` (${import.meta.env.VITE_PREVIEW_WORKTREE})`}
+        </span>
         <div className="flex items-center gap-1 no-drag">
           <button className="icon-button-sm" onClick={loadData} title="Refresh">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />

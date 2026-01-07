@@ -1,31 +1,26 @@
 # Preview Command
 
-Launch Grovr Desktop with an isolated test environment for manual UI verification.
+Launch Grovr Desktop preview for UI testing.
 
-## Quick Start
+## Instructions
 
-```bash
-./scripts/preview.sh
+1. Run `./scripts/preview.sh start` in background
+2. Tell the user the app is running and ask for feedback
+3. If user reports issues, check the log file at the path shown in output
+4. When user says they're done or closes the app, run `./scripts/preview.sh stop` to cleanup
+
+## Log file location
+
+`/private/tmp/grovr-preview-{worktree}/preview.log`
+
+## Example flow
+
 ```
-
-This will:
-1. Create a test git repository with sample worktrees
-2. Configure the app to use the test project
-3. Launch the Tauri app
-4. Restore original settings on exit (Ctrl+C)
-
-## Test Environment
-
-The preview creates these sample worktrees:
-- `feature-auth` - Login/authentication implementation
-- `feature-ui` - UI components
-- `bugfix-123` - Bug fix branch
-- `PROJ-101` - User profile page (with Jira issue)
-- `PROJ-202` - Dashboard widget (with Jira issue)
-
-## Usage Notes
-
-- Your real settings are backed up and restored after preview
-- Test environment is created in `/tmp/grovr-desktop-test-preview-*/`
-- Press Ctrl+C to stop and clean up
-- All changes made during preview are isolated from your real data
+Claude: [runs preview.sh start in background]
+Claude: "Preview is running. Please test the app and let me know if you find any issues."
+User: "The button doesn't work"
+Claude: [reads log file to check for errors]
+Claude: "I see an error in the log..."
+User: "I'm done testing"
+Claude: [runs preview.sh stop]
+```

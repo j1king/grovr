@@ -32,6 +32,11 @@ use commands::integrations::{
 fn setup_window_effects(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let window = app.get_webview_window("main").expect("no main window");
 
+    // Set dynamic window title for preview mode (worktree isolation)
+    if let Ok(worktree) = std::env::var("GROVR_PREVIEW_WORKTREE") {
+        window.set_title(&format!("Grovr ({})", worktree))?;
+    }
+
     #[cfg(target_os = "macos")]
     {
         let _ = apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, None);
