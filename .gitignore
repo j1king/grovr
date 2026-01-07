@@ -29,6 +29,10 @@ docs/
 src-tauri/target/
 src-tauri/Cargo.lock
 
+# Build artifacts
+*.dmg
+*.app.zip
+
 # Test
 test-results/
 playwright-report/
