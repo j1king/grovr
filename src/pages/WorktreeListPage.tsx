@@ -1,6 +1,23 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   Settings,
   Plus,
   GitBranch,
@@ -16,6 +33,7 @@ import {
   GitPullRequest,
   CircleDot,
   GitMerge,
+  GripVertical,
 } from 'lucide-react';
 import { message, ask } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -73,6 +91,39 @@ export function WorktreeListPage({
   const [hasGitHub, setHasGitHub] = useState(false);
   const [hasJira, setHasJira] = useState(false);
   const [jiraHost, setJiraHost] = useState<string | null>(null);
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = projects.findIndex((p) => p.repoPath === active.id);
+      const newIndex = projects.findIndex((p) => p.repoPath === over.id);
+
+      const newProjects = arrayMove(projects, oldIndex, newIndex);
+      setProjects(newProjects);
+
+      // Save new order to backend
+      try {
+        await api.reorderProjects(newProjects.map((p) => p.repoPath));
+      } catch (err) {
+        console.error('Failed to save project order:', err);
+        // Revert on error
+        setProjects(projects);
+      }
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -280,24 +331,35 @@ export function WorktreeListPage({
               </button>
             </div>
           )}
-          {projects.map((project) => (
-            <ProjectCard
-              key={project.name}
-              project={project}
-              expanded={expandedProjects.has(project.name)}
-              onToggle={() => toggleProject(project.name)}
-              onOpenProjectSettings={onOpenProjectSettings}
-              onOpenIde={handleOpenIde}
-              onOpenFinder={handleOpenFinder}
-              onOpenTerminal={handleOpenTerminal}
-              onCreateWorktree={() => onCreateWorktree(project)}
-              onEditWorktree={onEditWorktree}
-              showDescription={hasAnyDescription}
-              showGitHub={hasAnyGitHub}
-              showJira={hasAnyJira}
-              jiraHost={jiraHost}
-            />
-          ))}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={projects.map((p) => p.repoPath)}
+              strategy={verticalListSortingStrategy}
+            >
+              {projects.map((project) => (
+                <SortableProjectCard
+                  key={project.repoPath}
+                  project={project}
+                  expanded={expandedProjects.has(project.name)}
+                  onToggle={() => toggleProject(project.name)}
+                  onOpenProjectSettings={onOpenProjectSettings}
+                  onOpenIde={handleOpenIde}
+                  onOpenFinder={handleOpenFinder}
+                  onOpenTerminal={handleOpenTerminal}
+                  onCreateWorktree={() => onCreateWorktree(project)}
+                  onEditWorktree={onEditWorktree}
+                  showDescription={hasAnyDescription}
+                  showGitHub={hasAnyGitHub}
+                  showJira={hasAnyJira}
+                  jiraHost={jiraHost}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       </ScrollArea>
     </div>
@@ -320,6 +382,33 @@ interface ProjectCardProps {
   showJira: boolean;
 }
 
+function SortableProjectCard(props: ProjectCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props.project.repoPath });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <ProjectCard {...props} dragHandleProps={{ ...attributes, ...listeners }} />
+    </div>
+  );
+}
+
+interface ProjectCardInternalProps extends ProjectCardProps {
+  dragHandleProps?: Record<string, unknown>;
+}
+
 function ProjectCard({
   project,
   expanded,
@@ -334,11 +423,19 @@ function ProjectCard({
   showGitHub,
   showJira,
   jiraHost,
-}: ProjectCardProps) {
+  dragHandleProps,
+}: ProjectCardInternalProps) {
   return (
     <div className="project-section">
       {/* Project Header */}
       <div className="project-header">
+        <button
+          className="project-drag-handle"
+          title="Drag to reorder"
+          {...dragHandleProps}
+        >
+          <GripVertical size={14} />
+        </button>
         <button className="project-toggle" onClick={onToggle}>
           <span className="project-name">{project.name}</span>
           {expanded ? (
@@ -377,20 +474,28 @@ function ProjectCard({
           {project.worktrees.length === 0 ? (
             <div className="text-muted text-sm py-2 px-3">No worktrees found</div>
           ) : (
-            project.worktrees.map((worktree) => (
-              <WorktreeRow
-                key={worktree.path}
-                worktree={worktree}
-                onOpenIde={(path) => onOpenIde(path, project.ide)}
-                onOpenFinder={onOpenFinder}
-                onOpenTerminal={onOpenTerminal}
-                onEdit={() => onEditWorktree(worktree, project.repoPath)}
-                showDescription={showDescription}
-                showGitHub={showGitHub}
-                showJira={showJira}
-                jiraHost={jiraHost}
-              />
-            ))
+            [...project.worktrees]
+              .sort((a, b) => {
+                // Main branch always first
+                if (a.isMain && !b.isMain) return -1;
+                if (!a.isMain && b.isMain) return 1;
+                // Then alphabetically
+                return a.branch.localeCompare(b.branch);
+              })
+              .map((worktree) => (
+                <WorktreeRow
+                  key={worktree.path}
+                  worktree={worktree}
+                  onOpenIde={(path) => onOpenIde(path, project.ide)}
+                  onOpenFinder={onOpenFinder}
+                  onOpenTerminal={onOpenTerminal}
+                  onEdit={() => onEditWorktree(worktree, project.repoPath)}
+                  showDescription={showDescription}
+                  showGitHub={showGitHub}
+                  showJira={showJira}
+                  jiraHost={jiraHost}
+                />
+              ))
           )}
         </div>
       )}

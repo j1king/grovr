@@ -120,6 +120,10 @@ export async function removeProject(repoPath: string): Promise<void> {
   return invoke('remove_project', { repoPath });
 }
 
+export async function reorderProjects(repoPaths: string[]): Promise<void> {
+  return invoke('reorder_projects', { repoPaths });
+}
+
 // ============ Git - Worktree API ============
 
 export async function getWorktrees(repoPath: string): Promise<BackendWorktree[]> {

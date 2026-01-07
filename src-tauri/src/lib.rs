@@ -16,7 +16,7 @@ use commands::settings::{
     set_launch_at_startup, set_onboarding_completed, set_refresh_interval_minutes,
     set_skip_open_ide_confirm, set_theme, set_worktree_memo,
 };
-use commands::projects::{add_project, get_projects, remove_project, update_project};
+use commands::projects::{add_project, get_projects, remove_project, reorder_projects, update_project};
 use commands::git::{
     get_worktrees, create_worktree, create_worktree_existing_branch, remove_worktree,
     prune_worktrees, get_worktree_status, get_branches, get_current_branch, get_default_branch,
@@ -102,6 +102,7 @@ pub fn run() {
             add_project,
             update_project,
             remove_project,
+            reorder_projects,
             // Git - Worktrees
             get_worktrees,
             create_worktree,

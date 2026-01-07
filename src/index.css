@@ -126,9 +126,30 @@ html, body, #root {
 .project-header {
   @apply flex items-center justify-between py-1.5 px-2 rounded-md transition-colors;
   -webkit-app-region: no-drag;
+  background: hsl(var(--muted) / 0.4);
 }
 .project-header:hover {
-  background: hsl(var(--accent) / 0.5);
+  background: hsl(var(--accent) / 0.6);
+}
+
+.project-drag-handle {
+  @apply h-5 rounded flex items-center justify-center cursor-grab transition-all overflow-hidden;
+  width: 0;
+  opacity: 0;
+  color: hsl(var(--muted-foreground));
+  touch-action: none;
+}
+.project-drag-handle:active {
+  cursor: grabbing;
+}
+.project-header:hover .project-drag-handle {
+  width: 16px;
+  opacity: 0.6;
+  margin-right: 2px;
+}
+.project-drag-handle:hover {
+  @apply opacity-100;
+  color: hsl(var(--foreground));
 }
 
 .project-toggle {
@@ -143,7 +164,7 @@ html, body, #root {
   @apply opacity-100;
 }
 
-.project-name { @apply font-medium text-sm; }
+.project-name { @apply font-semibold text-sm; }
 
 .project-actions {
   @apply flex items-center gap-0.5 opacity-0 transition-all;

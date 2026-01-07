@@ -76,3 +76,32 @@ pub fn remove_project(
     }
     save_settings_internal(&app, &state)
 }
+
+#[tauri::command]
+pub fn reorder_projects(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    repo_paths: Vec<String>,
+) -> Result<(), String> {
+    {
+        let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+
+        // Create a new ordered list based on repo_paths order
+        let mut new_projects = Vec::new();
+        for path in &repo_paths {
+            if let Some(project) = settings.projects.iter().find(|p| &p.repo_path == path) {
+                new_projects.push(project.clone());
+            }
+        }
+
+        // Add any projects that weren't in the list (shouldn't happen, but just in case)
+        for project in &settings.projects {
+            if !repo_paths.contains(&project.repo_path) {
+                new_projects.push(project.clone());
+            }
+        }
+
+        settings.projects = new_projects;
+    }
+    save_settings_internal(&app, &state)
+}
