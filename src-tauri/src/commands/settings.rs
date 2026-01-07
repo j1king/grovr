@@ -207,14 +207,16 @@ pub fn set_worktree_memo(
 
 fn toggle_window_visibility(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
-        match window.is_visible() {
-            Ok(true) => {
-                let _ = window.hide();
-            }
-            Ok(false) | Err(_) => {
-                let _ = window.show();
-                let _ = window.set_focus();
-            }
+        let is_visible = window.is_visible().unwrap_or(false);
+        let is_focused = window.is_focused().unwrap_or(false);
+
+        if is_visible && is_focused {
+            // Window is visible and focused -> hide it
+            let _ = window.hide();
+        } else {
+            // Window is hidden or not focused -> show and focus
+            let _ = window.show();
+            let _ = window.set_focus();
         }
     }
 }
