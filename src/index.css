@@ -37,7 +37,7 @@
     --muted-foreground: 240 5% 64.9%;
     --accent: 240 4% 20%;
     --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 98%;
     --border: 240 4% 20%;
     --ring: 240 4.9% 83.9%;
@@ -814,6 +814,9 @@ html, body, #root {
 .danger-zone-item-desc {
   @apply text-xs mt-0.5;
   color: hsl(var(--muted-foreground));
+}
+.dark .danger-zone-item-desc {
+  color: hsl(var(--muted-foreground) / 0.9);
 }
 
 /* Modal */

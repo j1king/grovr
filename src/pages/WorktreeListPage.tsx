@@ -366,7 +366,7 @@ export function WorktreeListPage({
 
       {/* Content */}
       <ScrollArea className="flex-1">
-        <div className="px-2 pt-1 pb-2 space-y-0">
+        <div className="pl-2 pr-3 pt-1 pb-2 space-y-0">
           {projects.length === 0 && !loading && (
             <div className="empty-state">
               <div className="empty-state-icon">📁</div>
