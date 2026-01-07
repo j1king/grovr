@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
-import { ask, message } from '@tauri-apps/plugin-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { AlertModal } from '@/components/ui/alert-modal';
 import * as api from '@/lib/api';
 import type { Worktree } from '@/types';
 
@@ -17,6 +18,13 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Delete modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [forceDeleteModalOpen, setForceDeleteModalOpen] = useState(false);
+  const [forceDeleteError, setForceDeleteError] = useState('');
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState('');
 
   const originalBranch = worktree.branch;
   const repoPath = worktree.repoPath;
@@ -60,50 +68,30 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    if (!repoPath) return;
+    setDeleteModalOpen(true);
+  };
+
+  const executeDelete = async (force: boolean = false) => {
     if (!repoPath) return;
 
-    const confirmed = await ask(
-      `Are you sure you want to delete the worktree "${worktree.branch}"?\n\nThis will remove the worktree directory and its contents.`,
-      {
-        title: 'Delete Worktree',
-        kind: 'warning',
-        okLabel: 'Delete',
-        cancelLabel: 'Cancel',
-      }
-    );
-    if (!confirmed) return;
-
     try {
-      await api.removeWorktree(repoPath, worktree.path, false);
+      await api.removeWorktree(repoPath, worktree.path, force);
       onSaved();
       onBack();
     } catch (err) {
       console.error('Failed to delete worktree:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
 
-      const forceDelete = await ask(
-        `Failed to delete worktree: ${errorMessage}\n\nDo you want to force delete? This will discard any uncommitted changes.`,
-        {
-          title: 'Force Delete',
-          kind: 'warning',
-          okLabel: 'Force Delete',
-          cancelLabel: 'Cancel',
-        }
-      );
-
-      if (forceDelete) {
-        try {
-          await api.removeWorktree(repoPath, worktree.path, true);
-          onSaved();
-          onBack();
-        } catch (forceErr) {
-          const forceErrorMessage = forceErr instanceof Error ? forceErr.message : String(forceErr);
-          await message(`Failed to force delete worktree: ${forceErrorMessage}`, {
-            title: 'Error',
-            kind: 'error',
-          });
-        }
+      if (!force) {
+        // Offer force delete
+        setForceDeleteError(errorMessage);
+        setForceDeleteModalOpen(true);
+      } else {
+        // Force delete also failed
+        setErrorModalMessage(`Failed to force delete worktree: ${errorMessage}`);
+        setErrorModalOpen(true);
       }
     }
   };
@@ -225,6 +213,42 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
           </div>
         </div>
       </ScrollArea>
+
+      {/* Delete Worktree Confirmation Modal */}
+      <ConfirmModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Delete Worktree"
+        description={`Are you sure you want to delete the worktree "${worktree.branch}"?\n\nThis will remove the worktree directory and its contents.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => executeDelete(false)}
+        onCancel={() => {}}
+      />
+
+      {/* Force Delete Confirmation Modal */}
+      <ConfirmModal
+        open={forceDeleteModalOpen}
+        onOpenChange={setForceDeleteModalOpen}
+        title="Force Delete Worktree"
+        description={`The worktree could not be deleted normally:\n\n${forceDeleteError}\n\nDo you want to force delete it? This cannot be undone.`}
+        confirmLabel="Force Delete"
+        variant="destructive"
+        onConfirm={() => {
+          setForceDeleteModalOpen(false);
+          executeDelete(true);
+        }}
+        onCancel={() => {}}
+      />
+
+      {/* Error Alert Modal */}
+      <AlertModal
+        open={errorModalOpen}
+        onOpenChange={setErrorModalOpen}
+        title="Error"
+        description={errorModalMessage}
+        variant="error"
+      />
     </div>
   );
 }

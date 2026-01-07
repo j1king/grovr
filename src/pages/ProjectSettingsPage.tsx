@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
-import { ask } from '@tauri-apps/plugin-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 import * as api from '@/lib/api';
+import { ideOptions } from '@/lib/ide-config';
 import type { Project } from '@/types';
 
 interface ProjectSettingsPageProps {
@@ -19,6 +20,9 @@ export function ProjectSettingsPage({ project, onBack, onDeleted, onSaved }: Pro
   const [name, setName] = useState(project.name);
   const [defaultBaseBranch, setDefaultBaseBranch] = useState(project.defaultBaseBranch || '');
   const [ideOverride, setIdeOverride] = useState(project.ide || '');
+
+  // Delete modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   useEffect(() => {
     loadBranches();
@@ -52,27 +56,19 @@ export function ProjectSettingsPage({ project, onBack, onDeleted, onSaved }: Pro
     }
   };
 
-  const handleDelete = async () => {
-    const confirmed = await ask(
-      `Are you sure you want to remove "${project.name}" from Grovr?\n\nThis will not delete the actual repository.`,
-      {
-        title: 'Delete Project',
-        kind: 'warning',
-        okLabel: 'Delete',
-        cancelLabel: 'Cancel',
-      }
-    );
+  const handleDelete = () => {
+    setDeleteModalOpen(true);
+  };
 
-    if (confirmed) {
-      setDeleting(true);
-      try {
-        await api.removeProject(project.repoPath);
-        onDeleted();
-      } catch (err) {
-        console.error('Failed to delete project:', err);
-      } finally {
-        setDeleting(false);
-      }
+  const executeDelete = async () => {
+    setDeleting(true);
+    try {
+      await api.removeProject(project.repoPath);
+      onDeleted();
+    } catch (err) {
+      console.error('Failed to delete project:', err);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -142,12 +138,11 @@ export function ProjectSettingsPage({ project, onBack, onDeleted, onSaved }: Pro
                 onChange={(e) => setIdeOverride(e.target.value)}
               >
                 <option value="">Use Default</option>
-                <option value="code">VS Code</option>
-                <option value="cursor">Cursor</option>
-                <option value="idea">IntelliJ IDEA</option>
-                <option value="webstorm">WebStorm</option>
-                <option value="pycharm">PyCharm</option>
-                <option value="goland">GoLand</option>
+                {ideOptions.map((ide) => (
+                  <option key={ide.id} value={ide.id}>
+                    {ide.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -188,6 +183,18 @@ export function ProjectSettingsPage({ project, onBack, onDeleted, onSaved }: Pro
         </div>
         </div>
       </ScrollArea>
+
+      {/* Delete Project Confirmation Modal */}
+      <ConfirmModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Delete Project"
+        description={`Are you sure you want to remove "${project.name}" from Grovr?\n\nThis will not delete the actual repository.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={executeDelete}
+        onCancel={() => {}}
+      />
     </div>
   );
 }

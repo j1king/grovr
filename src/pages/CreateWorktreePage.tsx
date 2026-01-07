@@ -1,21 +1,13 @@
 import { useState, useEffect } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { getIDEName } from '@/lib/ide-config';
 import * as api from '@/lib/api';
-import type { Project } from '@/types';
+import type { Project, IDEPreset } from '@/types';
 
 interface ParsedClipboard {
   issueNumber: string;
   description: string;
 }
-
-const IDE_NAMES: Record<string, string> = {
-  code: 'VS Code',
-  cursor: 'Cursor',
-  idea: 'IntelliJ IDEA',
-  webstorm: 'WebStorm',
-  pycharm: 'PyCharm',
-  goland: 'GoLand',
-};
 
 interface CreateWorktreePageProps {
   project: Project;
@@ -356,7 +348,7 @@ export function CreateWorktreePage({ project: initialProject, onBack, onWorktree
                       className="rounded"
                     />
                     <span className="text-sm">
-                      Open in {IDE_NAMES[settings?.ide?.preset || 'code'] || 'IDE'} after creation
+                      Open in {getIDEName((settings?.ide?.preset || 'code') as IDEPreset)} after creation
                     </span>
                   </label>
                 </div>

@@ -36,9 +36,22 @@ import {
   GripVertical,
   Trash2,
 } from 'lucide-react';
-import { message, ask } from '@tauri-apps/plugin-dialog';
+import { message } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  ModalDescription,
+  ModalBody,
+  ModalFooter,
+} from '@/components/ui/modal';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { AlertModal } from '@/components/ui/alert-modal';
+import { getIDEInfo } from '@/lib/ide-config';
 import * as api from '@/lib/api';
 import type { Project, Worktree, IDEPreset } from '@/types';
 import type { PullRequestInfo, JiraIssueInfo } from '@/lib/api';
@@ -92,6 +105,27 @@ export function WorktreeListPage({
   const [hasGitHub, setHasGitHub] = useState(false);
   const [hasJira, setHasJira] = useState(false);
   const [jiraHost, setJiraHost] = useState<string | null>(null);
+
+  // IDE confirmation modal state
+  const [ideModalOpen, setIdeModalOpen] = useState(false);
+  const [ideModalData, setIdeModalData] = useState<{
+    path: string;
+    preset: IDEPreset;
+    customCommand?: string;
+    folderName: string;
+  } | null>(null);
+  const [dontAskAgain, setDontAskAgain] = useState(false);
+
+  // Delete worktree modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteModalData, setDeleteModalData] = useState<{
+    worktree: Worktree;
+    repoPath: string;
+  } | null>(null);
+  const [forceDeleteModalOpen, setForceDeleteModalOpen] = useState(false);
+  const [forceDeleteError, setForceDeleteError] = useState('');
+  const [errorModalOpen, setErrorModalOpen] = useState(false);
+  const [errorModalMessage, setErrorModalMessage] = useState('');
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -246,33 +280,60 @@ export function WorktreeListPage({
 
   const handleOpenIde = async (path: string, projectIde?: string) => {
     // Use project IDE override if set, otherwise use global settings
-    const preset = projectIde || settings?.ide?.preset || 'code';
+    const preset = (projectIde || settings?.ide?.preset || 'code') as IDEPreset;
     const customCommand = settings?.ide?.custom_command;
     const skipConfirm = settings?.skip_open_ide_confirm ?? false;
 
-    const ideName = preset === 'custom' ? 'IDE' : preset;
-
-    // Show confirmation dialog unless skip is enabled
+    // Show confirmation modal unless skip is enabled
     if (!skipConfirm) {
       const folderName = path.split('/').pop() || path;
-      const confirmed = await ask(`Open "${folderName}" in ${ideName}?`, {
-        title: 'Open IDE',
-        kind: 'info',
-        okLabel: 'Open',
-        cancelLabel: 'Cancel',
-      });
-      if (!confirmed) return;
+      setIdeModalData({ path, preset, customCommand, folderName });
+      setDontAskAgain(false);
+      setIdeModalOpen(true);
+      return;
     }
+
+    // Direct open if skip is enabled
+    await executeOpenIde(path, preset, customCommand);
+  };
+
+  const executeOpenIde = async (path: string, preset: IDEPreset, customCommand?: string) => {
     try {
       await api.openIde(path, preset, customCommand);
     } catch (err) {
       console.error('Failed to open IDE:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
+      const ideInfo = getIDEInfo(preset);
       await message(
-        `Failed to open ${ideName}.\n\nError: ${errorMessage}`,
+        `Failed to open ${ideInfo.name}.\n\nMake sure the IDE is installed and the command is available in your PATH.\n\nError: ${errorMessage}`,
         { title: 'IDE Error', kind: 'error' }
       );
     }
+  };
+
+  const handleIdeModalConfirm = async () => {
+    if (!ideModalData) return;
+
+    // Save "don't ask again" preference if checked
+    if (dontAskAgain) {
+      try {
+        await api.setSkipOpenIdeConfirm(true);
+        setSettings((prev) =>
+          prev ? { ...prev, skip_open_ide_confirm: true } : prev
+        );
+      } catch (err) {
+        console.error('Failed to save skip confirm preference:', err);
+      }
+    }
+
+    setIdeModalOpen(false);
+    await executeOpenIde(ideModalData.path, ideModalData.preset, ideModalData.customCommand);
+    setIdeModalData(null);
+  };
+
+  const handleIdeModalCancel = () => {
+    setIdeModalOpen(false);
+    setIdeModalData(null);
   };
 
   const handleOpenFinder = async (path: string) => {
@@ -291,47 +352,32 @@ export function WorktreeListPage({
     }
   };
 
-  const handleDeleteWorktree = async (worktree: Worktree, repoPath: string) => {
-    const confirmed = await ask(
-      `Are you sure you want to delete the worktree "${worktree.branch}"?\n\nThis will remove the worktree directory and its contents.`,
-      {
-        title: 'Delete Worktree',
-        kind: 'warning',
-        okLabel: 'Delete',
-        cancelLabel: 'Cancel',
-      }
-    );
-    if (!confirmed) return;
+  const handleDeleteWorktree = (worktree: Worktree, repoPath: string) => {
+    setDeleteModalData({ worktree, repoPath });
+    setDeleteModalOpen(true);
+  };
+
+  const executeDeleteWorktree = async (force: boolean = false) => {
+    if (!deleteModalData) return;
+    const { worktree, repoPath } = deleteModalData;
 
     try {
-      await api.removeWorktree(repoPath, worktree.path, false);
+      await api.removeWorktree(repoPath, worktree.path, force);
       loadData();
+      setDeleteModalData(null);
     } catch (err) {
       console.error('Failed to delete worktree:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
 
-      // If it fails due to uncommitted changes, offer force delete
-      const forceDelete = await ask(
-        `Failed to delete worktree: ${errorMessage}\n\nDo you want to force delete? This will discard any uncommitted changes.`,
-        {
-          title: 'Force Delete',
-          kind: 'warning',
-          okLabel: 'Force Delete',
-          cancelLabel: 'Cancel',
-        }
-      );
-
-      if (forceDelete) {
-        try {
-          await api.removeWorktree(repoPath, worktree.path, true);
-          loadData();
-        } catch (forceErr) {
-          const forceErrorMessage = forceErr instanceof Error ? forceErr.message : String(forceErr);
-          await message(`Failed to force delete worktree: ${forceErrorMessage}`, {
-            title: 'Error',
-            kind: 'error',
-          });
-        }
+      if (!force) {
+        // If normal delete fails, offer force delete
+        setForceDeleteError(errorMessage);
+        setForceDeleteModalOpen(true);
+      } else {
+        // Force delete also failed
+        setErrorModalMessage(`Failed to force delete worktree: ${errorMessage}`);
+        setErrorModalOpen(true);
+        setDeleteModalData(null);
       }
     }
   };
@@ -412,6 +458,91 @@ export function WorktreeListPage({
           </DndContext>
         </div>
       </ScrollArea>
+
+      {/* IDE Confirmation Modal */}
+      <Modal open={ideModalOpen} onOpenChange={setIdeModalOpen}>
+        <ModalContent>
+          {ideModalData && (() => {
+            const ideInfo = getIDEInfo(ideModalData.preset);
+            return (
+              <>
+                <div className="modal-icon-container">
+                  <div className="modal-icon">
+                    <img src={ideInfo.icon} alt={ideInfo.name} />
+                  </div>
+                </div>
+                <ModalHeader>
+                  <ModalTitle>Open in {ideInfo.name}</ModalTitle>
+                </ModalHeader>
+                <ModalBody>
+                  <ModalDescription>
+                    Open "<span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{ideModalData.folderName}</span>" in {ideInfo.name}?
+                  </ModalDescription>
+                  <div className="modal-checkbox-wrapper">
+                    <input
+                      type="checkbox"
+                      id="dont-ask-again"
+                      className="modal-checkbox"
+                      checked={dontAskAgain}
+                      onChange={(e) => setDontAskAgain(e.target.checked)}
+                    />
+                    <label htmlFor="dont-ask-again" className="modal-checkbox-label">
+                      Don't ask again
+                    </label>
+                  </div>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="outline" size="sm" onClick={handleIdeModalCancel}>
+                    Cancel
+                  </Button>
+                  <Button size="sm" onClick={handleIdeModalConfirm}>
+                    Open
+                  </Button>
+                </ModalFooter>
+              </>
+            );
+          })()}
+        </ModalContent>
+      </Modal>
+
+      {/* Delete Worktree Confirmation Modal */}
+      <ConfirmModal
+        open={deleteModalOpen}
+        onOpenChange={setDeleteModalOpen}
+        title="Delete Worktree"
+        description={deleteModalData ? `Are you sure you want to delete the worktree "${deleteModalData.worktree.branch}"?\n\nThis will remove the worktree directory and its contents.` : ''}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => executeDeleteWorktree(false)}
+        onCancel={() => setDeleteModalData(null)}
+      />
+
+      {/* Force Delete Confirmation Modal */}
+      <ConfirmModal
+        open={forceDeleteModalOpen}
+        onOpenChange={setForceDeleteModalOpen}
+        title="Force Delete Worktree"
+        description={`The worktree could not be deleted normally:\n\n${forceDeleteError}\n\nDo you want to force delete it? This cannot be undone.`}
+        confirmLabel="Force Delete"
+        variant="destructive"
+        onConfirm={() => {
+          setForceDeleteModalOpen(false);
+          executeDeleteWorktree(true);
+        }}
+        onCancel={() => {
+          setForceDeleteModalOpen(false);
+          setDeleteModalData(null);
+        }}
+      />
+
+      {/* Error Alert Modal */}
+      <AlertModal
+        open={errorModalOpen}
+        onOpenChange={setErrorModalOpen}
+        title="Error"
+        description={errorModalMessage}
+        variant="error"
+      />
     </div>
   );
 }

@@ -1,16 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as api from '@/lib/api';
+import { ideOptions } from '@/lib/ide-config';
 import type { IDEPreset } from '@/types';
-
-const ideOptions: { id: IDEPreset; name: string }[] = [
-  { id: 'code', name: 'VS Code' },
-  { id: 'cursor', name: 'Cursor' },
-  { id: 'idea', name: 'IntelliJ IDEA' },
-  { id: 'webstorm', name: 'WebStorm' },
-  { id: 'pycharm', name: 'PyCharm' },
-  { id: 'goland', name: 'GoLand' },
-  { id: 'custom', name: 'Custom' },
-];
 
 export function IDESettings() {
   const [selectedIDE, setSelectedIDE] = useState<IDEPreset>('code');

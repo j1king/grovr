@@ -821,24 +821,51 @@ html, body, #root {
 
 /* Modal */
 .modal-overlay {
-  @apply fixed inset-0 z-50 flex items-center justify-center;
+  @apply fixed inset-0 z-50;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
+  animation: modalOverlayShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modal-content {
-  @apply rounded-xl shadow-2xl w-full max-w-md mx-4;
+  @apply fixed left-1/2 top-1/2 z-50 rounded-xl shadow-2xl w-full max-w-sm;
+  transform: translate(-50%, -50%);
   background: hsl(var(--background));
   border: 1px solid hsl(var(--border));
+  animation: modalContentShow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalOverlayShow {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalContentShow {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
 }
 
 .modal-header {
-  @apply flex items-center justify-between px-4 py-3;
+  @apply flex items-center justify-center px-4 py-3;
+}
+
+.modal-header-bordered {
   border-bottom: 1px solid hsl(var(--border));
 }
 
 .modal-title {
-  @apply text-sm font-semibold;
+  @apply text-sm font-semibold text-center;
+}
+
+.modal-description {
+  @apply text-xs text-center;
+  color: hsl(var(--muted-foreground));
 }
 
 .modal-close {
@@ -851,12 +878,55 @@ html, body, #root {
 }
 
 .modal-body {
-  @apply p-4;
+  @apply px-4 pb-4;
 }
 
 .modal-footer {
   @apply flex justify-end gap-2 px-4 py-3;
   border-top: 1px solid hsl(var(--border));
+}
+
+/* Modal IDE Icon */
+.modal-icon-container {
+  @apply flex justify-center pt-5 pb-3;
+}
+
+.modal-icon {
+  @apply w-16 h-16 rounded-2xl flex items-center justify-center p-3;
+  background: hsl(var(--accent));
+}
+
+.modal-icon img {
+  @apply w-full h-full object-contain;
+}
+
+/* Modal Checkbox */
+.modal-checkbox-wrapper {
+  @apply flex items-center justify-center gap-2 pt-3;
+}
+
+.modal-checkbox {
+  @apply w-4 h-4 rounded cursor-pointer transition-all appearance-none flex-shrink-0;
+  border: 1.5px solid hsl(var(--border));
+  background: hsl(var(--background));
+}
+
+.modal-checkbox:hover {
+  border-color: hsl(var(--muted-foreground));
+}
+
+.modal-checkbox:checked {
+  background: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e");
+  background-size: 100% 100%;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.modal-checkbox-label {
+  @apply text-xs cursor-pointer select-none;
+  color: hsl(var(--muted-foreground));
 }
 
 /* Page Layout */
