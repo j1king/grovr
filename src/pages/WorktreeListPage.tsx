@@ -255,7 +255,7 @@ export function WorktreeListPage({
       setProjects(projectsWithWorktrees);
       // Only auto-expand all if no expansion state exists
       if (expandedProjects.size === 0) {
-        onExpandedProjectsChange(new Set(projectsWithWorktrees.map((p) => p.name)));
+        onExpandedProjectsChange(new Set(projectsWithWorktrees.map((p) => p.repoPath)));
       }
     } catch (err) {
       console.error('Failed to load data:', err);
@@ -268,12 +268,12 @@ export function WorktreeListPage({
     loadData();
   }, []);
 
-  const toggleProject = (name: string) => {
+  const toggleProject = (repoPath: string) => {
     const next = new Set(expandedProjects);
-    if (next.has(name)) {
-      next.delete(name);
+    if (next.has(repoPath)) {
+      next.delete(repoPath);
     } else {
-      next.add(name);
+      next.add(repoPath);
     }
     onExpandedProjectsChange(next);
   };
@@ -439,8 +439,8 @@ export function WorktreeListPage({
                 <SortableProjectCard
                   key={project.repoPath}
                   project={project}
-                  expanded={expandedProjects.has(project.name)}
-                  onToggle={() => toggleProject(project.name)}
+                  expanded={expandedProjects.has(project.repoPath)}
+                  onToggle={() => toggleProject(project.repoPath)}
                   onOpenProjectSettings={onOpenProjectSettings}
                   onOpenIde={handleOpenIde}
                   onOpenFinder={handleOpenFinder}

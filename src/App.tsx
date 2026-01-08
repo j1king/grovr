@@ -151,6 +151,27 @@ function App() {
     setRefreshKey((k) => k + 1);
   }, []);
 
+  const handleProjectDeleted = useCallback(() => {
+    handleRefresh();
+    setPage('worktrees');
+  }, [handleRefresh]);
+
+  const handleProjectSaved = useCallback(() => {
+    handleRefresh();
+  }, [handleRefresh]);
+
+  const handleProjectAdded = useCallback((repoPath: string) => {
+    handleRefresh();
+    setExpandedProjects((prev) => new Set([...prev, repoPath]));
+  }, [handleRefresh]);
+
+  const handleWorktreeCreated = useCallback(() => {
+    handleRefresh();
+    setClipboardData(null);
+  }, [handleRefresh]);
+
+  const goToWorktrees = useCallback(() => setPage('worktrees'), []);
+
   return (
     <div className="app-container">
       {page === 'worktrees' && (
@@ -166,24 +187,18 @@ function App() {
         />
       )}
       {page === 'settings' && (
-        <SettingsPage onBack={() => setPage('worktrees')} />
+        <SettingsPage onBack={goToWorktrees} />
       )}
       {page === 'project-settings' && selectedProject && (
         <ProjectSettingsPage
           project={selectedProject}
-          onBack={() => setPage('worktrees')}
-          onDeleted={() => {
-            handleRefresh();
-            setPage('worktrees');
-          }}
-          onSaved={handleRefresh}
+          onBack={goToWorktrees}
+          onDeleted={handleProjectDeleted}
+          onSaved={handleProjectSaved}
         />
       )}
       {page === 'add-project' && (
-        <AddProjectPage
-          onBack={() => setPage('worktrees')}
-          onProjectAdded={handleRefresh}
-        />
+        <AddProjectPage onBack={goToWorktrees} onProjectAdded={handleProjectAdded} />
       )}
       {page === 'create-worktree' && selectedProject && (
         <CreateWorktreePage
@@ -192,10 +207,7 @@ function App() {
             setPage('worktrees');
             setClipboardData(null);
           }}
-          onWorktreeCreated={() => {
-            handleRefresh();
-            setClipboardData(null);
-          }}
+          onWorktreeCreated={handleWorktreeCreated}
           initialData={clipboardData}
           allowProjectChange={!!clipboardData}
         />
@@ -203,7 +215,7 @@ function App() {
       {page === 'edit-worktree' && selectedWorktree && (
         <EditWorktreePage
           worktree={selectedWorktree}
-          onBack={() => setPage('worktrees')}
+          onBack={goToWorktrees}
           onSaved={handleRefresh}
         />
       )}

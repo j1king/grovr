@@ -6,7 +6,7 @@ import * as api from '@/lib/api';
 
 interface AddProjectPageProps {
   onBack: () => void;
-  onProjectAdded: () => void;
+  onProjectAdded: (repoPath: string) => void;
 }
 
 export function AddProjectPage({ onBack, onProjectAdded }: AddProjectPageProps) {
@@ -59,7 +59,7 @@ export function AddProjectPage({ onBack, onProjectAdded }: AddProjectPageProps) 
         repo_path: repoPath.trim(),
         default_base_branch: defaultBaseBranch.trim() || undefined,
       });
-      onProjectAdded();
+      onProjectAdded(repoPath.trim());
       onBack();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
