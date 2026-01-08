@@ -176,10 +176,23 @@ cmd_start() {
     fi
 }
 
+# Kill processes using the preview ports
+kill_port_processes() {
+    for port in "$VITE_PORT" "$VITE_HMR_PORT"; do
+        local pids=$(lsof -ti ":$port" 2>/dev/null || true)
+        if [ -n "$pids" ]; then
+            print_status "Killing processes on port $port..."
+            echo "$pids" | xargs kill -9 2>/dev/null || true
+        fi
+    done
+}
+
 # Stop preview
 cmd_stop() {
     if ! is_running; then
         print_warning "Preview is not running"
+        # Kill any processes on ports anyway
+        kill_port_processes
         # Cleanup any leftover files
         if [ -d "$PREVIEW_ROOT" ]; then
             cleanup
@@ -205,6 +218,9 @@ cmd_stop() {
     if kill -0 "$pid" 2>/dev/null; then
         kill -9 "$pid" 2>/dev/null || true
     fi
+
+    # Kill any remaining processes on ports
+    kill_port_processes
 
     cleanup
     print_success "Preview stopped"
