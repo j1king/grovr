@@ -204,7 +204,7 @@ html, body, #root {
 .worktree-row:active { background: hsl(var(--accent) / 0.7); }
 
 .worktree-col-branch { @apply flex items-center gap-1.5 pr-3; }
-.worktree-col-description { @apply min-w-0 max-w-[280px] px-2 truncate text-muted-foreground text-xs; }
+.worktree-col-description { @apply min-w-0 px-2 truncate text-muted-foreground text-xs; }
 .worktree-col-github { @apply w-[100px] flex justify-center; }
 .worktree-col-jira { @apply w-[100px] flex justify-center; }
 .worktree-col-actions { @apply relative w-[28px] flex justify-end; }
