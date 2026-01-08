@@ -107,21 +107,26 @@ cmd_start() {
     print_status "Preview root: ${YELLOW}${PREVIEW_ROOT}${NC}"
     echo ""
 
-    # 1. Setup isolated environment
-    print_status "[1/3] Setting up isolated environment..."
+    # 1. Install dependencies
+    print_status "[1/4] Installing dependencies..."
+    cd "$PROJECT_ROOT"
+    pnpm install > /dev/null 2>&1
+
+    # 2. Setup isolated environment
+    print_status "[2/4] Setting up isolated environment..."
     mkdir -p "$TAURI_DATA_DIR"
     mkdir -p "$PREVIEW_ROOT/logs"
 
-    # 2. Setup test repository
-    print_status "[2/3] Creating test repositories..."
+    # 3. Setup test repository
+    print_status "[3/4] Creating test repositories..."
     "$SCRIPT_DIR/setup-test-repo.sh" "$WORKTREE_NAME" "$VITE_PORT" > "$PREVIEW_ROOT/logs/setup.log" 2>&1
 
     # Copy test settings to isolated Tauri data directory
     TEST_ROOT="${TMP_DIR}/grovr-desktop-test-${WORKTREE_NAME}"
     cp "$TEST_ROOT/config/settings.json" "$TAURI_DATA_DIR/settings.json"
 
-    # 3. Start Tauri app in background
-    print_status "[3/3] Starting Tauri app..."
+    # 4. Start Tauri app in background
+    print_status "[4/4] Starting Tauri app..."
     echo ""
 
     cd "$PROJECT_ROOT"
@@ -171,8 +176,17 @@ cmd_start() {
         print_status "Close the app window or run './scripts/preview.sh stop' to cleanup."
         echo ""
     else
-        print_error "Failed to start preview. Check log: $LOG_FILE"
-        exit 1
+        # Failed to start - cleanup and retry once
+        if [ "${PREVIEW_RETRY:-0}" -eq 0 ]; then
+            print_warning "Failed to start preview. Cleaning up and retrying..."
+            cleanup
+            export PREVIEW_RETRY=1
+            cmd_start
+        else
+            print_error "Failed to start preview after retry. Check log: $LOG_FILE"
+            cleanup
+            exit 1
+        fi
     fi
 }
 
