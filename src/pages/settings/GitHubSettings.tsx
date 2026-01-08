@@ -17,6 +17,26 @@ export function GitHubSettings() {
   const [token, setToken] = useState('');
   const [host, setHost] = useState('');
 
+  // Extract hostname from full URL (like Jira)
+  const extractHost = (input: string): string => {
+    const trimmed = input.trim();
+    if (!trimmed) return trimmed;
+    try {
+      const url = new URL(trimmed.startsWith('http') ? trimmed : `https://${trimmed}`);
+      return url.hostname;
+    } catch {
+      return trimmed;
+    }
+  };
+
+  // Get token creation URL based on host
+  const getTokenUrl = (): string => {
+    const baseHost = configType === 'enterprise' && host.trim()
+      ? host.trim()
+      : 'github.com';
+    return `https://${baseHost}/settings/tokens/new?scopes=repo&description=Grovr`;
+  };
+
   useEffect(() => {
     loadConfig();
   }, []);
@@ -179,6 +199,12 @@ export function GitHubSettings() {
                   className="settings-input"
                   value={host}
                   onChange={(e) => setHost(e.target.value)}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const pasted = e.clipboardData.getData('text');
+                    const parsedHost = extractHost(pasted);
+                    setHost(parsedHost);
+                  }}
                   placeholder="github.company.com"
                 />
               </div>
@@ -196,7 +222,7 @@ export function GitHubSettings() {
               />
               <div className="flex justify-end mt-1">
                 <a
-                  href="https://github.com/settings/tokens/new?scopes=repo&description=Grovr"
+                  href={getTokenUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="integration-help-link"
