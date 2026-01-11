@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import * as api from '@/lib/api';
 import { ideOptions } from '@/lib/ide-config';
 import type { Project } from '@/types';
@@ -55,6 +56,9 @@ export function ProjectSettingsPage({ project, onBack, onDeleted, onSaved }: Pro
       setSaving(false);
     }
   };
+
+  // Cmd/Ctrl+Enter to save
+  useKeyboardShortcut({ key: 'Enter', cmdOrCtrl: true }, handleSave, !saving && !!name.trim());
 
   const handleDelete = () => {
     setDeleteModalOpen(true);

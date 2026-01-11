@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Folder } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import * as api from '@/lib/api';
 
 interface AddProjectPageProps {
@@ -43,8 +44,7 @@ export function AddProjectPage({ onBack, onProjectAdded }: AddProjectPageProps) 
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doSubmit = async () => {
     if (!name.trim() || !repoPath.trim()) {
       setError('Name and repository path are required');
       return;
@@ -67,6 +67,14 @@ export function AddProjectPage({ onBack, onProjectAdded }: AddProjectPageProps) 
       setLoading(false);
     }
   };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    doSubmit();
+  };
+
+  // Cmd/Ctrl+Enter to submit
+  useKeyboardShortcut({ key: 'Enter', cmdOrCtrl: true }, doSubmit, !loading && !!name.trim() && !!repoPath.trim());
 
   return (
     <div className="h-full flex flex-col">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import { getIDEName } from '@/lib/ide-config';
 import * as api from '@/lib/api';
 import type { Project, IDEPreset } from '@/types';
@@ -130,8 +131,7 @@ export function CreateWorktreePage({ project: initialProject, onBack, onWorktree
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const doSubmit = async () => {
     if (!selectedProject || !branchName.trim() || !worktreePath.trim()) {
       setError('Branch name and worktree path are required');
       return;
@@ -191,6 +191,14 @@ export function CreateWorktreePage({ project: initialProject, onBack, onWorktree
       setLoading(false);
     }
   };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    doSubmit();
+  };
+
+  // Cmd/Ctrl+Enter to submit
+  useKeyboardShortcut({ key: 'Enter', cmdOrCtrl: true }, doSubmit, !loading && !!branchName.trim() && !!worktreePath.trim());
 
   const isRemoteBranch = baseBranch.startsWith('origin/') || branches.remote.includes(baseBranch);
   const copyPaths = settings?.copy_paths || [];

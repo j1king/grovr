@@ -461,7 +461,14 @@ export function WorktreeListPage({
 
       {/* IDE Confirmation Modal */}
       <Modal open={ideModalOpen} onOpenChange={setIdeModalOpen}>
-        <ModalContent>
+        <ModalContent
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              handleIdeModalConfirm();
+            }
+          }}
+        >
           {ideModalData && (() => {
             const ideInfo = getIDEInfo(ideModalData.preset);
             return (

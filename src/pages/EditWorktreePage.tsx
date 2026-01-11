@@ -3,6 +3,7 @@ import { Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { AlertModal } from '@/components/ui/alert-modal';
+import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import * as api from '@/lib/api';
 import type { Worktree } from '@/types';
 
@@ -67,6 +68,9 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
       setSaving(false);
     }
   };
+
+  // Cmd/Ctrl+Enter to save
+  useKeyboardShortcut({ key: 'Enter', cmdOrCtrl: true }, handleSave, !saving && !!branchName.trim());
 
   const handleDelete = () => {
     if (!repoPath) return;
