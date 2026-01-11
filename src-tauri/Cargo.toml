@@ -33,6 +33,7 @@ tauri-plugin-shell = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-deep-link = "2"
 
 # Git operations (Phase 4)
 git2 = "0.19"

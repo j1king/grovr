@@ -19,6 +19,7 @@
     "shell:default",
     "liquid-glass:default",
     "autostart:default",
-    "global-shortcut:default"
+    "global-shortcut:default",
+    "deep-link:default"
   ]
 }

@@ -6,8 +6,10 @@ import { AddProjectPage } from '@/pages/AddProjectPage';
 import { CreateWorktreePage } from '@/pages/CreateWorktreePage';
 import { EditWorktreePage } from '@/pages/EditWorktreePage';
 import { readText } from '@tauri-apps/plugin-clipboard-manager';
+import { onOpenUrl, getCurrent } from '@tauri-apps/plugin-deep-link';
 import * as api from '@/lib/api';
-import type { Project, Worktree, IDEPreset } from '@/types';
+import { parseDeepLink, findBestMatchingProject } from '@/lib/deep-link';
+import type { Project, Worktree, IDEPreset, DeepLinkParams } from '@/types';
 import './index.css';
 
 type Page = 'worktrees' | 'settings' | 'project-settings' | 'add-project' | 'create-worktree' | 'edit-worktree';
@@ -169,6 +171,104 @@ function App() {
     handleRefresh();
     setClipboardData(null);
   }, [handleRefresh]);
+
+  // Deep link handler
+  const handleDeepLink = useCallback(async (params: DeepLinkParams) => {
+    if (params.route === 'create-worktree') {
+      try {
+        const projects = await api.getProjects();
+        if (projects.length === 0) {
+          setPage('add-project');
+          return;
+        }
+
+        let targetProject: (typeof projects)[0] | undefined;
+
+        // Find project by name if specified
+        if (params.project) {
+          const matched = findBestMatchingProject(params.project, projects);
+          if (matched) {
+            targetProject = matched;
+          }
+        }
+
+        // Fallback to last used project
+        if (!targetProject) {
+          const settings = await api.getSettings();
+          if (settings.last_used_project) {
+            targetProject = projects.find((p) => p.repo_path === settings.last_used_project);
+          }
+        }
+
+        // Fallback to first project
+        if (!targetProject) {
+          targetProject = projects[0];
+        }
+
+        setSelectedProject({
+          name: targetProject.name,
+          repoPath: targetProject.repo_path,
+          defaultBaseBranch: targetProject.default_base_branch,
+          ide: targetProject.ide?.preset as IDEPreset | undefined,
+          worktrees: [],
+        });
+
+        if (params.issue || params.description) {
+          setClipboardData({
+            issueNumber: params.issue || '',
+            description: params.description || '',
+          });
+        }
+
+        setPage('create-worktree');
+      } catch (err) {
+        console.error('Failed to handle deep link:', err);
+      }
+    } else if (params.route === 'settings') {
+      setPage('settings');
+    }
+  }, []);
+
+  // Deep link listener
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+
+    const setupDeepLink = async () => {
+      // Check for cold start deep link
+      try {
+        const urls = await getCurrent();
+        if (urls && urls.length > 0) {
+          const parsed = parseDeepLink(urls[0]);
+          if (parsed.valid && parsed.params) {
+            // Delay to ensure React is mounted
+            setTimeout(() => handleDeepLink(parsed.params!), 100);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to get current deep link:', err);
+      }
+
+      // Listen for warm start deep links
+      try {
+        unsubscribe = await onOpenUrl((urls) => {
+          if (urls.length > 0) {
+            const parsed = parseDeepLink(urls[0]);
+            if (parsed.valid && parsed.params) {
+              handleDeepLink(parsed.params);
+            }
+          }
+        });
+      } catch (err) {
+        console.error('Failed to setup deep link listener:', err);
+      }
+    };
+
+    setupDeepLink();
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, [handleDeepLink]);
 
   const goToWorktrees = useCallback(() => setPage('worktrees'), []);
 

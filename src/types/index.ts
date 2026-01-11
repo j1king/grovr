@@ -105,3 +105,19 @@ export interface JiraIssue {
 
 // Navigation types
 export type SettingsCategory = 'general' | 'appearance' | 'ide' | 'worktree' | 'github' | 'jira';
+
+// Deep link types
+export type DeepLinkRoute = 'create-worktree' | 'settings';
+
+export interface DeepLinkParams {
+  route: DeepLinkRoute;
+  project?: string; // Project name (fuzzy match)
+  issue?: string; // Issue number
+  description?: string;
+}
+
+export interface ParsedDeepLink {
+  valid: boolean;
+  params?: DeepLinkParams;
+  error?: string;
+}
