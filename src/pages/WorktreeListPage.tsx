@@ -385,9 +385,9 @@ export function WorktreeListPage({
   // Check if any worktree has data for optional columns
   const allWorktrees = projects.flatMap((p) => p.worktrees);
   const hasAnyDescription = allWorktrees.some((w) => w.description);
-  // Show integration columns if connected (even if no worktree has data yet)
-  const hasAnyGitHub = hasGitHub;
-  const hasAnyJira = hasJira;
+  // Only show integration columns if there's actual fetched data
+  const hasAnyGitHub = hasGitHub && allWorktrees.some((w) => w.prInfo);
+  const hasAnyJira = hasJira && allWorktrees.some((w) => w.jiraInfo || w.issueNumber);
 
   return (
     <div className="h-full flex flex-col">
