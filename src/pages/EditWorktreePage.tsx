@@ -24,6 +24,7 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [deleteBranchToo, setDeleteBranchToo] = useState(false);
   const [forceDeleteModalOpen, setForceDeleteModalOpen] = useState(false);
   const [forceDeleting, setForceDeleting] = useState(false);
   const [forceDeleteError, setForceDeleteError] = useState('');
@@ -80,6 +81,7 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
 
   const handleDelete = () => {
     if (!repoPath) return;
+    setDeleteBranchToo(true);
     setDeleteModalOpen(true);
   };
 
@@ -96,7 +98,7 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
     });
 
     try {
-      await api.removeWorktree(repoPath, worktree.path, force);
+      await api.removeWorktree(repoPath, worktree.path, force, deleteBranchToo, worktree.branch);
       onSaved();
       onBack();
     } catch (err) {
@@ -244,13 +246,23 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
         onOpenChange={setDeleteModalOpen}
         title="Delete Worktree"
         description={`Are you sure you want to delete the worktree "${worktree.branch}"?\n\nThis will remove the worktree directory and its contents.`}
-        confirmLabel="Delete"
+        confirmLabel={deleteBranchToo ? 'Delete Worktree & Branch' : 'Delete'}
         variant="destructive"
         onConfirm={() => executeDelete(false)}
         onCancel={() => {}}
         loading={deleting}
         loadingLabel="Deleting..."
-      />
+      >
+        <label className="flex items-center gap-2 mt-4 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={deleteBranchToo}
+            onChange={(e) => setDeleteBranchToo(e.target.checked)}
+            className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-0"
+          />
+          <span className="text-sm text-foreground">Also delete local branch</span>
+        </label>
+      </ConfirmModal>
 
       {/* Force Delete Confirmation Modal */}
       <ConfirmModal
@@ -258,13 +270,23 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
         onOpenChange={setForceDeleteModalOpen}
         title="Force Delete Worktree"
         description={`The worktree could not be deleted normally:\n\n${forceDeleteError}\n\nDo you want to force delete it? This cannot be undone.`}
-        confirmLabel="Force Delete"
+        confirmLabel={deleteBranchToo ? 'Force Delete & Branch' : 'Force Delete'}
         variant="destructive"
         onConfirm={() => executeDelete(true)}
-        onCancel={() => {}}
+        onCancel={() => setDeleteBranchToo(false)}
         loading={forceDeleting}
         loadingLabel="Deleting..."
-      />
+      >
+        <label className="flex items-center gap-2 mt-4 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={deleteBranchToo}
+            onChange={(e) => setDeleteBranchToo(e.target.checked)}
+            className="w-4 h-4 rounded border-input bg-background text-primary focus:ring-primary focus:ring-offset-0"
+          />
+          <span className="text-sm text-foreground">Also delete local branch</span>
+        </label>
+      </ConfirmModal>
 
       {/* Error Alert Modal */}
       <AlertModal

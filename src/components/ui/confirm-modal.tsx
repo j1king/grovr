@@ -24,6 +24,7 @@ interface ConfirmModalProps {
   onCancel: () => void;
   loading?: boolean;
   loadingLabel?: string;
+  children?: React.ReactNode;
 }
 
 const variantConfig: Record<ConfirmVariant, { icon: typeof Info; iconClass: string; buttonVariant: 'default' | 'destructive' }> = {
@@ -56,6 +57,7 @@ export function ConfirmModal({
   onCancel,
   loading = false,
   loadingLabel,
+  children,
 }: ConfirmModalProps) {
   const config = variantConfig[variant];
   const Icon = config.icon;
@@ -94,6 +96,7 @@ export function ConfirmModal({
         </ModalHeader>
         <ModalBody>
           <ModalDescription className="whitespace-pre-line">{description}</ModalDescription>
+          {children}
         </ModalBody>
         <ModalFooter>
           <Button variant="outline" size="sm" onClick={handleCancel} disabled={loading}>

@@ -155,9 +155,11 @@ export async function createWorktreeExistingBranch(
 export async function removeWorktree(
   repoPath: string,
   worktreePath: string,
-  force: boolean
+  force: boolean,
+  deleteBranch: boolean = false,
+  branchName?: string
 ): Promise<void> {
-  return invoke('remove_worktree', { repoPath, worktreePath, force });
+  return invoke('remove_worktree', { repoPath, worktreePath, force, deleteBranch, branchName });
 }
 
 export async function pruneWorktrees(repoPath: string): Promise<void> {

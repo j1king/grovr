@@ -139,7 +139,13 @@ pub async fn create_worktree_existing_branch(
 }
 
 #[tauri::command]
-pub async fn remove_worktree(repo_path: String, worktree_path: String, force: bool) -> Result<(), String> {
+pub async fn remove_worktree(
+    repo_path: String,
+    worktree_path: String,
+    force: bool,
+    delete_branch: bool,
+    branch_name: Option<String>,
+) -> Result<(), String> {
     tokio::task::spawn_blocking(move || {
         let mut args = vec!["worktree", "remove"];
         if force {
@@ -155,6 +161,43 @@ pub async fn remove_worktree(repo_path: String, worktree_path: String, force: bo
 
         if !output.status.success() {
             return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
+
+        // Delete the branch after worktree removal if requested
+        if delete_branch {
+            if let Some(branch) = branch_name {
+                // Use -D (force) since the branch may not be fully merged
+                let flag = if force { "-D" } else { "-d" };
+                let output = Command::new("git")
+                    .args(["branch", flag, &branch])
+                    .current_dir(&repo_path)
+                    .output()
+                    .map_err(|e| format!("Worktree removed but failed to delete branch: {}", e))?;
+
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    // If soft delete fails, try force delete
+                    if !force && stderr.contains("not fully merged") {
+                        let output = Command::new("git")
+                            .args(["branch", "-D", &branch])
+                            .current_dir(&repo_path)
+                            .output()
+                            .map_err(|e| format!("Worktree removed but failed to force delete branch: {}", e))?;
+
+                        if !output.status.success() {
+                            return Err(format!(
+                                "Worktree removed but failed to delete branch: {}",
+                                String::from_utf8_lossy(&output.stderr)
+                            ));
+                        }
+                    } else {
+                        return Err(format!(
+                            "Worktree removed but failed to delete branch: {}",
+                            stderr
+                        ));
+                    }
+                }
+            }
         }
 
         Ok(())
@@ -693,6 +736,8 @@ mod tests {
             repo_path.clone(),
             worktree_path.to_string_lossy().to_string(),
             false,
+            false,
+            None,
         )
         .expect("Failed to remove worktree");
 
@@ -723,6 +768,8 @@ mod tests {
             repo_path.clone(),
             worktree_path.to_string_lossy().to_string(),
             false,
+            false,
+            None,
         );
         assert!(result.is_err());
 
@@ -731,6 +778,8 @@ mod tests {
             repo_path.clone(),
             worktree_path.to_string_lossy().to_string(),
             true,
+            false,
+            None,
         )
         .expect("Failed to force remove worktree");
 
