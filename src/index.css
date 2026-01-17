@@ -100,6 +100,33 @@ html, body, #root {
   color: hsl(var(--foreground));
 }
 
+/* Search Bar */
+.search-bar {
+  @apply flex items-center gap-2 px-3 py-1.5 mx-2 mb-1 rounded-md text-xs flex-shrink-0;
+  background: hsl(var(--secondary));
+  border: 1px solid hsl(var(--border));
+}
+.search-bar-icon {
+  @apply flex-shrink-0;
+  color: hsl(var(--muted-foreground));
+}
+.search-bar-input {
+  @apply flex-1 font-mono text-xs bg-transparent border-none outline-none min-w-0;
+  color: hsl(var(--foreground));
+}
+.search-bar-input::placeholder {
+  color: hsl(var(--muted-foreground));
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+}
+.search-bar-clear {
+  @apply w-5 h-5 rounded flex items-center justify-center transition-colors flex-shrink-0;
+  color: hsl(var(--muted-foreground));
+}
+.search-bar-clear:hover {
+  background: hsl(var(--accent));
+  color: hsl(var(--foreground));
+}
+
 .badge {
   @apply px-1.5 py-0.5 text-[10px] font-medium rounded;
   background: hsl(var(--secondary));
@@ -202,6 +229,12 @@ html, body, #root {
 }
 .worktree-row:hover { background: hsl(var(--accent) / 0.5); }
 .worktree-row:active { background: hsl(var(--accent) / 0.7); }
+.worktree-row-selected {
+  background: hsl(var(--accent) / 0.7);
+  outline: 1px solid hsl(var(--border));
+  outline-offset: -1px;
+}
+.worktree-row-selected:hover { background: hsl(var(--accent) / 0.8); }
 
 .worktree-col-branch { @apply flex items-center gap-1.5 pr-3; }
 .worktree-col-description { @apply min-w-0 px-2 truncate text-muted-foreground text-xs; }

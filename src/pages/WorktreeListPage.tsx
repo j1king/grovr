@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -35,6 +35,8 @@ import {
   GitMerge,
   GripVertical,
   Trash2,
+  Search,
+  X,
 } from 'lucide-react';
 import { message } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
@@ -127,6 +129,34 @@ export function WorktreeListPage({
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
 
+  // Keyboard navigation and search state
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchActive, setSearchActive] = useState(false);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const handleOpenIdeRef = useRef<(path: string, projectIde?: string) => void>(() => {});
+  const selectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-clear selection after timeout (only when not in search mode)
+  useEffect(() => {
+    if (selectionTimeoutRef.current) {
+      clearTimeout(selectionTimeoutRef.current);
+    }
+
+    if (selectedPath && !searchActive) {
+      selectionTimeoutRef.current = setTimeout(() => {
+        setSelectedPath(null);
+      }, 3000);
+    }
+
+    return () => {
+      if (selectionTimeoutRef.current) {
+        clearTimeout(selectionTimeoutRef.current);
+      }
+    };
+  }, [selectedPath, searchActive]);
+
   // Drag and drop sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -138,6 +168,124 @@ export function WorktreeListPage({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Calculate visible worktrees for keyboard navigation
+  const visibleWorktrees = useMemo(() => {
+    const result: { path: string; projectIde?: string }[] = [];
+    const query = searchQuery.toLowerCase();
+
+    for (const project of projects) {
+      if (!expandedProjects.has(project.repoPath)) continue;
+
+      const sortedWorktrees = [...project.worktrees].sort((a, b) => {
+        if (a.isMain && !b.isMain) return -1;
+        if (!a.isMain && b.isMain) return 1;
+        return a.branch.localeCompare(b.branch);
+      });
+
+      for (const worktree of sortedWorktrees) {
+        // Filter by search query
+        if (query) {
+          const branchMatch = worktree.branch.toLowerCase().includes(query);
+          const descMatch = worktree.description?.toLowerCase().includes(query);
+          if (!branchMatch && !descMatch) continue;
+        }
+        result.push({ path: worktree.path, projectIde: project.ide });
+      }
+    }
+
+    return result;
+  }, [projects, expandedProjects, searchQuery]);
+
+  // Keyboard navigation handler
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Ignore if modal is open
+    if (ideModalOpen || deleteModalOpen || forceDeleteModalOpen || errorModalOpen) return;
+
+    const target = e.target as HTMLElement;
+    const isSearchInput = target === searchInputRef.current;
+    const key = e.key;
+
+    // Arrow navigation (works even when search input is focused)
+    if (key === 'ArrowDown' || key === 'ArrowUp') {
+      e.preventDefault();
+      if (visibleWorktrees.length === 0) return;
+
+      const currentIndex = selectedPath
+        ? visibleWorktrees.findIndex((w) => w.path === selectedPath)
+        : -1;
+
+      let nextIndex: number;
+      if (key === 'ArrowDown') {
+        nextIndex = currentIndex < visibleWorktrees.length - 1 ? currentIndex + 1 : 0;
+      } else {
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : visibleWorktrees.length - 1;
+      }
+
+      setSelectedPath(visibleWorktrees[nextIndex].path);
+
+      // Scroll into view
+      setTimeout(() => {
+        const escapedPath = globalThis.CSS.escape(visibleWorktrees[nextIndex].path);
+        const selectedEl = document.querySelector(`[data-worktree-path="${escapedPath}"]`);
+        selectedEl?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }, 0);
+      return;
+    }
+
+    // Enter to open IDE
+    if (key === 'Enter' && selectedPath) {
+      e.preventDefault();
+      const worktree = visibleWorktrees.find((w) => w.path === selectedPath);
+      if (worktree) {
+        handleOpenIdeRef.current(worktree.path, worktree.projectIde);
+      }
+      return;
+    }
+
+    // Escape to clear search
+    if (key === 'Escape') {
+      if (searchActive || searchQuery) {
+        e.preventDefault();
+        setSearchQuery('');
+        setSearchActive(false);
+        searchInputRef.current?.blur();
+      }
+      return;
+    }
+
+    // Skip the rest if focused on other inputs
+    if (!isSearchInput && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+
+    // Cmd+F to activate search
+    if (key === 'f' && e.metaKey) {
+      e.preventDefault();
+      setSearchActive(true);
+      setTimeout(() => searchInputRef.current?.focus(), 0);
+      return;
+    }
+
+    // Printable characters to search (only when not in search input)
+    if (!isSearchInput && key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      setSearchActive(true);
+      setSearchQuery((prev) => prev + key);
+      setTimeout(() => searchInputRef.current?.focus(), 0);
+    }
+  }, [visibleWorktrees, selectedPath, searchQuery, searchActive, ideModalOpen, deleteModalOpen, forceDeleteModalOpen, errorModalOpen]);
+
+  // Attach keyboard listener
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
+  // Reset selection if it's no longer visible
+  useEffect(() => {
+    if (selectedPath && !visibleWorktrees.find((w) => w.path === selectedPath)) {
+      setSelectedPath(visibleWorktrees[0]?.path || null);
+    }
+  }, [visibleWorktrees, selectedPath]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -278,7 +426,21 @@ export function WorktreeListPage({
     onExpandedProjectsChange(next);
   };
 
-  const handleOpenIde = async (path: string, projectIde?: string) => {
+  const executeOpenIde = useCallback(async (path: string, preset: IDEPreset, customCommand?: string) => {
+    try {
+      await api.openIde(path, preset, customCommand);
+    } catch (err) {
+      console.error('Failed to open IDE:', err);
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const ideInfo = getIDEInfo(preset);
+      await message(
+        `Failed to open ${ideInfo.name}.\n\nMake sure the IDE is installed and the command is available in your PATH.\n\nError: ${errorMessage}`,
+        { title: 'IDE Error', kind: 'error' }
+      );
+    }
+  }, []);
+
+  const handleOpenIde = useCallback(async (path: string, projectIde?: string) => {
     // Use project IDE override if set, otherwise use global settings
     const preset = (projectIde || settings?.ide?.preset || 'code') as IDEPreset;
     const customCommand = settings?.ide?.custom_command;
@@ -295,21 +457,10 @@ export function WorktreeListPage({
 
     // Direct open if skip is enabled
     await executeOpenIde(path, preset, customCommand);
-  };
+  }, [settings, executeOpenIde]);
 
-  const executeOpenIde = async (path: string, preset: IDEPreset, customCommand?: string) => {
-    try {
-      await api.openIde(path, preset, customCommand);
-    } catch (err) {
-      console.error('Failed to open IDE:', err);
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      const ideInfo = getIDEInfo(preset);
-      await message(
-        `Failed to open ${ideInfo.name}.\n\nMake sure the IDE is installed and the command is available in your PATH.\n\nError: ${errorMessage}`,
-        { title: 'IDE Error', kind: 'error' }
-      );
-    }
-  };
+  // Keep ref updated for keyboard handler
+  handleOpenIdeRef.current = handleOpenIde;
 
   const handleIdeModalConfirm = async () => {
     if (!ideModalData) return;
@@ -410,8 +561,34 @@ export function WorktreeListPage({
         </div>
       </div>
 
+      {/* Search Bar */}
+      {searchActive && (
+        <div className="search-bar">
+          <Search size={12} className="search-bar-icon" />
+          <input
+            ref={searchInputRef}
+            type="text"
+            className="search-bar-input"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Type to search..."
+            autoFocus
+          />
+          <button
+            className="search-bar-clear"
+            onClick={() => {
+              setSearchQuery('');
+              setSearchActive(false);
+            }}
+            title="Clear search (Esc)"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
+
       {/* Content */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1" ref={scrollAreaRef}>
         <div className="pl-2 pr-3 pt-1 pb-2 space-y-0">
           {projects.length === 0 && !loading && (
             <div className="empty-state">
@@ -452,6 +629,8 @@ export function WorktreeListPage({
                   showGitHub={hasAnyGitHub}
                   showJira={hasAnyJira}
                   jiraHost={jiraHost}
+                  selectedPath={selectedPath}
+                  searchQuery={searchQuery}
                 />
               ))}
             </SortableContext>
@@ -569,6 +748,8 @@ interface ProjectCardProps {
   showDescription: boolean;
   showGitHub: boolean;
   showJira: boolean;
+  selectedPath: string | null;
+  searchQuery: string;
 }
 
 function SortableProjectCard(props: ProjectCardProps) {
@@ -613,8 +794,27 @@ function ProjectCard({
   showGitHub,
   showJira,
   jiraHost,
+  selectedPath,
+  searchQuery,
   dragHandleProps,
 }: ProjectCardInternalProps) {
+  // Filter worktrees by search query
+  const filteredWorktrees = useMemo(() => {
+    const query = searchQuery.toLowerCase();
+    const sorted = [...project.worktrees].sort((a, b) => {
+      if (a.isMain && !b.isMain) return -1;
+      if (!a.isMain && b.isMain) return 1;
+      return a.branch.localeCompare(b.branch);
+    });
+
+    if (!query) return sorted;
+
+    return sorted.filter((w) => {
+      const branchMatch = w.branch.toLowerCase().includes(query);
+      const descMatch = w.description?.toLowerCase().includes(query);
+      return branchMatch || descMatch;
+    });
+  }, [project.worktrees, searchQuery]);
   return (
     <div className="project-section">
       {/* Project Header */}
@@ -672,32 +872,27 @@ function ProjectCard({
             ].filter(Boolean).join(' '),
           }}
         >
-          {project.worktrees.length === 0 ? (
-            <div className="text-muted text-sm py-2 px-3">No worktrees found</div>
+          {filteredWorktrees.length === 0 ? (
+            <div className="text-muted text-sm py-2 px-3">
+              {project.worktrees.length === 0 ? 'No worktrees found' : 'No matching worktrees'}
+            </div>
           ) : (
-            [...project.worktrees]
-              .sort((a, b) => {
-                // Main branch always first
-                if (a.isMain && !b.isMain) return -1;
-                if (!a.isMain && b.isMain) return 1;
-                // Then alphabetically
-                return a.branch.localeCompare(b.branch);
-              })
-              .map((worktree) => (
-                <WorktreeRow
-                  key={worktree.path}
-                  worktree={worktree}
-                  onOpenIde={(path) => onOpenIde(path, project.ide)}
-                  onOpenFinder={onOpenFinder}
-                  onOpenTerminal={onOpenTerminal}
-                  onEdit={() => onEditWorktree(worktree, project.repoPath)}
-                  onDelete={() => onDeleteWorktree(worktree, project.repoPath)}
-                  showDescription={showDescription}
-                  showGitHub={showGitHub}
-                  showJira={showJira}
-                  jiraHost={jiraHost}
-                />
-              ))
+            filteredWorktrees.map((worktree) => (
+              <WorktreeRow
+                key={worktree.path}
+                worktree={worktree}
+                onOpenIde={(path) => onOpenIde(path, project.ide)}
+                onOpenFinder={onOpenFinder}
+                onOpenTerminal={onOpenTerminal}
+                onEdit={() => onEditWorktree(worktree, project.repoPath)}
+                onDelete={() => onDeleteWorktree(worktree, project.repoPath)}
+                showDescription={showDescription}
+                showGitHub={showGitHub}
+                showJira={showJira}
+                jiraHost={jiraHost}
+                isSelected={selectedPath === worktree.path}
+              />
+            ))
           )}
         </div>
       )}
@@ -716,6 +911,7 @@ interface WorktreeRowProps {
   showGitHub: boolean;
   showJira: boolean;
   jiraHost: string | null;
+  isSelected: boolean;
 }
 
 function WorktreeRow({
@@ -729,6 +925,7 @@ function WorktreeRow({
   showGitHub,
   showJira,
   jiraHost,
+  isSelected,
 }: WorktreeRowProps) {
   const [showActions, setShowActions] = useState(false);
   const [dropdownPos, setDropdownPos] = useState<{
@@ -812,7 +1009,8 @@ function WorktreeRow({
 
   return (
     <div
-      className="worktree-row"
+      className={`worktree-row ${isSelected ? 'worktree-row-selected' : ''}`}
+      data-worktree-path={worktree.path}
       onClick={handleRowClick}
       onMouseLeave={() => setShowActions(false)}
     >
