@@ -18,14 +18,6 @@ Git worktrees let you work on multiple branches simultaneously without stashing 
 
 ---
 
-## Installation
-
-**Download** the latest `.dmg` from [Releases](https://github.com/j1king/grovr-desktop/releases).
-
-**Requirements:** macOS 10.15+ and Git installed.
-
----
-
 ## Features
 
 ### One-Click IDE Launch
@@ -59,6 +51,14 @@ See pull request status (draft, review requested, approved, CI status) and Jira 
 ### Quick Cleanup
 
 Delete worktrees with one click. Optionally delete the local branch too—no more orphaned branches cluttering your repo.
+
+---
+
+## Installation
+
+**Download** the latest `.dmg` from [Releases](https://github.com/j1king/grovr-desktop/releases).
+
+**Requirements:** macOS 10.15+ and Git installed.
 
 ---
 
