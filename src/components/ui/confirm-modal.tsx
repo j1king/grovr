@@ -22,6 +22,8 @@ interface ConfirmModalProps {
   variant?: ConfirmVariant;
   onConfirm: () => void;
   onCancel: () => void;
+  loading?: boolean;
+  loadingLabel?: string;
 }
 
 const variantConfig: Record<ConfirmVariant, { icon: typeof Info; iconClass: string; buttonVariant: 'default' | 'destructive' }> = {
@@ -52,22 +54,35 @@ export function ConfirmModal({
   variant = 'info',
   onConfirm,
   onCancel,
+  loading = false,
+  loadingLabel,
 }: ConfirmModalProps) {
   const config = variantConfig[variant];
   const Icon = config.icon;
 
   const handleConfirm = () => {
     onConfirm();
-    onOpenChange(false);
+    // If loadingLabel is provided, parent controls closing via onOpenChange
+    // Otherwise auto-close for backwards compatibility
+    if (!loadingLabel) {
+      onOpenChange(false);
+    }
   };
 
   const handleCancel = () => {
+    if (loading) return; // Prevent cancel while loading
     onCancel();
     onOpenChange(false);
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    // Prevent closing while loading
+    if (!newOpen && loading) return;
+    onOpenChange(newOpen);
+  };
+
   return (
-    <Modal open={open} onOpenChange={onOpenChange}>
+    <Modal open={open} onOpenChange={handleOpenChange}>
       <ModalContent>
         <div className="modal-icon-container">
           <div className={`w-12 h-12 rounded-full flex items-center justify-center ${config.iconClass}`}>
@@ -81,11 +96,11 @@ export function ConfirmModal({
           <ModalDescription className="whitespace-pre-line">{description}</ModalDescription>
         </ModalBody>
         <ModalFooter>
-          <Button variant="outline" size="sm" onClick={handleCancel}>
+          <Button variant="outline" size="sm" onClick={handleCancel} disabled={loading}>
             {cancelLabel}
           </Button>
-          <Button variant={config.buttonVariant} size="sm" onClick={handleConfirm}>
-            {confirmLabel}
+          <Button variant={config.buttonVariant} size="sm" onClick={handleConfirm} disabled={loading}>
+            {loading ? (loadingLabel || confirmLabel) : confirmLabel}
           </Button>
         </ModalFooter>
       </ModalContent>

@@ -22,7 +22,9 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
 
   // Delete modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [forceDeleteModalOpen, setForceDeleteModalOpen] = useState(false);
+  const [forceDeleting, setForceDeleting] = useState(false);
   const [forceDeleteError, setForceDeleteError] = useState('');
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
@@ -80,6 +82,12 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
   const executeDelete = async (force: boolean = false) => {
     if (!repoPath) return;
 
+    if (force) {
+      setForceDeleting(true);
+    } else {
+      setDeleting(true);
+    }
+
     try {
       await api.removeWorktree(repoPath, worktree.path, force);
       onSaved();
@@ -89,14 +97,19 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
       const errorMessage = err instanceof Error ? err.message : String(err);
 
       if (!force) {
-        // Offer force delete
+        // Close the delete modal and offer force delete
+        setDeleteModalOpen(false);
         setForceDeleteError(errorMessage);
         setForceDeleteModalOpen(true);
       } else {
         // Force delete also failed
+        setForceDeleteModalOpen(false);
         setErrorModalMessage(`Failed to force delete worktree: ${errorMessage}`);
         setErrorModalOpen(true);
       }
+    } finally {
+      setDeleting(false);
+      setForceDeleting(false);
     }
   };
 
@@ -228,6 +241,8 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
         variant="destructive"
         onConfirm={() => executeDelete(false)}
         onCancel={() => {}}
+        loading={deleting}
+        loadingLabel="Deleting..."
       />
 
       {/* Force Delete Confirmation Modal */}
@@ -238,11 +253,10 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
         description={`The worktree could not be deleted normally:\n\n${forceDeleteError}\n\nDo you want to force delete it? This cannot be undone.`}
         confirmLabel="Force Delete"
         variant="destructive"
-        onConfirm={() => {
-          setForceDeleteModalOpen(false);
-          executeDelete(true);
-        }}
+        onConfirm={() => executeDelete(true)}
         onCancel={() => {}}
+        loading={forceDeleting}
+        loadingLabel="Deleting..."
       />
 
       {/* Error Alert Modal */}
