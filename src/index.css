@@ -708,6 +708,7 @@ html, body, #root {
   color: hsl(var(--background));
 }
 .btn-primary:hover { opacity: 0.9; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-secondary {
   @apply inline-flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors;
@@ -715,6 +716,7 @@ html, body, #root {
   border: 1px solid hsl(var(--border));
 }
 .btn-secondary:hover { background: hsl(var(--accent)); }
+.btn-secondary:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-secondary-sm {
   @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-medium transition-colors;

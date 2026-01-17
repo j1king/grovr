@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useKeyboardShortcut } from '@/hooks/useKeyboardShortcut';
 import { getIDEName } from '@/lib/ide-config';
@@ -137,8 +138,11 @@ export function CreateWorktreePage({ project: initialProject, onBack, onWorktree
       return;
     }
 
-    setLoading(true);
-    setError('');
+    // Force React to render loading state before starting heavy operation
+    flushSync(() => {
+      setLoading(true);
+      setError('');
+    });
 
     try {
       // Fetch if needed

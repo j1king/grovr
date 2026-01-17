@@ -83,72 +83,84 @@ pub fn get_worktrees(repo_path: String) -> Result<Vec<Worktree>, String> {
 }
 
 #[tauri::command]
-pub fn create_worktree(
+pub async fn create_worktree(
     repo_path: String,
     worktree_path: String,
     branch_name: String,
     base_branch: String,
 ) -> Result<(), String> {
-    let output = Command::new("git")
-        .args(["worktree", "add", "-b", &branch_name, &worktree_path, &base_branch])
-        .current_dir(&repo_path)
-        .output()
-        .map_err(|e| format!("Failed to run git: {}", e))?;
+    tokio::task::spawn_blocking(move || {
+        let output = Command::new("git")
+            .args(["worktree", "add", "-b", &branch_name, &worktree_path, &base_branch])
+            .current_dir(&repo_path)
+            .output()
+            .map_err(|e| format!("Failed to run git: {}", e))?;
 
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
 
-    // When base_branch is a remote branch (e.g., origin/main), git automatically
-    // sets up the new branch to track that remote branch. This causes pushes to
-    // go to the base branch instead of origin/<new-branch>. Remove the upstream
-    // tracking to fix this behavior.
-    let _ = Command::new("git")
-        .args(["branch", "--unset-upstream", &branch_name])
-        .current_dir(&worktree_path)
-        .output();
+        // When base_branch is a remote branch (e.g., origin/main), git automatically
+        // sets up the new branch to track that remote branch. This causes pushes to
+        // go to the base branch instead of origin/<new-branch>. Remove the upstream
+        // tracking to fix this behavior.
+        let _ = Command::new("git")
+            .args(["branch", "--unset-upstream", &branch_name])
+            .current_dir(&worktree_path)
+            .output();
 
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
 }
 
 #[tauri::command]
-pub fn create_worktree_existing_branch(
+pub async fn create_worktree_existing_branch(
     repo_path: String,
     worktree_path: String,
     branch_name: String,
 ) -> Result<(), String> {
-    let output = Command::new("git")
-        .args(["worktree", "add", &worktree_path, &branch_name])
-        .current_dir(&repo_path)
-        .output()
-        .map_err(|e| format!("Failed to run git: {}", e))?;
+    tokio::task::spawn_blocking(move || {
+        let output = Command::new("git")
+            .args(["worktree", "add", &worktree_path, &branch_name])
+            .current_dir(&repo_path)
+            .output()
+            .map_err(|e| format!("Failed to run git: {}", e))?;
 
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
 
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
 }
 
 #[tauri::command]
-pub fn remove_worktree(repo_path: String, worktree_path: String, force: bool) -> Result<(), String> {
-    let mut args = vec!["worktree", "remove"];
-    if force {
-        args.push("--force");
-    }
-    args.push(&worktree_path);
+pub async fn remove_worktree(repo_path: String, worktree_path: String, force: bool) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        let mut args = vec!["worktree", "remove"];
+        if force {
+            args.push("--force");
+        }
+        args.push(&worktree_path);
 
-    let output = Command::new("git")
-        .args(&args)
-        .current_dir(&repo_path)
-        .output()
-        .map_err(|e| format!("Failed to run git: {}", e))?;
+        let output = Command::new("git")
+            .args(&args)
+            .current_dir(&repo_path)
+            .output()
+            .map_err(|e| format!("Failed to run git: {}", e))?;
 
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
 
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
 }
 
 #[tauri::command]
@@ -338,33 +350,41 @@ pub fn rename_branch(repo_path: String, old_name: String, new_name: String) -> R
 // ============ Git Operations ============
 
 #[tauri::command]
-pub fn git_fetch(repo_path: String) -> Result<(), String> {
-    let output = Command::new("git")
-        .args(["fetch", "--all", "--prune"])
-        .current_dir(&repo_path)
-        .output()
-        .map_err(|e| format!("Failed to run git: {}", e))?;
+pub async fn git_fetch(repo_path: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        let output = Command::new("git")
+            .args(["fetch", "--all", "--prune"])
+            .current_dir(&repo_path)
+            .output()
+            .map_err(|e| format!("Failed to run git: {}", e))?;
 
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
 
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
 }
 
 #[tauri::command]
-pub fn git_pull(worktree_path: String) -> Result<(), String> {
-    let output = Command::new("git")
-        .args(["pull"])
-        .current_dir(&worktree_path)
-        .output()
-        .map_err(|e| format!("Failed to run git: {}", e))?;
+pub async fn git_pull(worktree_path: String) -> Result<(), String> {
+    tokio::task::spawn_blocking(move || {
+        let output = Command::new("git")
+            .args(["pull"])
+            .current_dir(&worktree_path)
+            .output()
+            .map_err(|e| format!("Failed to run git: {}", e))?;
 
-    if !output.status.success() {
-        return Err(String::from_utf8_lossy(&output.stderr).to_string());
-    }
+        if !output.status.success() {
+            return Err(String::from_utf8_lossy(&output.stderr).to_string());
+        }
 
-    Ok(())
+        Ok(())
+    })
+    .await
+    .map_err(|e| format!("Task failed: {}", e))?
 }
 
 // ============ IDE/File Operations ============

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { flushSync } from 'react-dom';
 import { createPortal } from 'react-dom';
 import {
   DndContext,
@@ -120,11 +121,13 @@ export function WorktreeListPage({
 
   // Delete worktree modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [deleteModalData, setDeleteModalData] = useState<{
     worktree: Worktree;
     repoPath: string;
   } | null>(null);
   const [forceDeleteModalOpen, setForceDeleteModalOpen] = useState(false);
+  const [forceDeleting, setForceDeleting] = useState(false);
   const [forceDeleteError, setForceDeleteError] = useState('');
   const [errorModalOpen, setErrorModalOpen] = useState(false);
   const [errorModalMessage, setErrorModalMessage] = useState('');
@@ -512,24 +515,40 @@ export function WorktreeListPage({
     if (!deleteModalData) return;
     const { worktree, repoPath } = deleteModalData;
 
+    // Force React to render loading state before starting operation
+    flushSync(() => {
+      if (force) {
+        setForceDeleting(true);
+      } else {
+        setDeleting(true);
+      }
+    });
+
     try {
       await api.removeWorktree(repoPath, worktree.path, force);
-      loadData();
+      setDeleteModalOpen(false);
+      setForceDeleteModalOpen(false);
       setDeleteModalData(null);
+      loadData();
     } catch (err) {
       console.error('Failed to delete worktree:', err);
       const errorMessage = err instanceof Error ? err.message : String(err);
 
       if (!force) {
         // If normal delete fails, offer force delete
+        setDeleteModalOpen(false);
         setForceDeleteError(errorMessage);
         setForceDeleteModalOpen(true);
       } else {
         // Force delete also failed
+        setForceDeleteModalOpen(false);
         setErrorModalMessage(`Failed to force delete worktree: ${errorMessage}`);
         setErrorModalOpen(true);
         setDeleteModalData(null);
       }
+    } finally {
+      setDeleting(false);
+      setForceDeleting(false);
     }
   };
 
@@ -701,6 +720,8 @@ export function WorktreeListPage({
         variant="destructive"
         onConfirm={() => executeDeleteWorktree(false)}
         onCancel={() => setDeleteModalData(null)}
+        loading={deleting}
+        loadingLabel="Deleting..."
       />
 
       {/* Force Delete Confirmation Modal */}
@@ -711,14 +732,13 @@ export function WorktreeListPage({
         description={`The worktree could not be deleted normally:\n\n${forceDeleteError}\n\nDo you want to force delete it? This cannot be undone.`}
         confirmLabel="Force Delete"
         variant="destructive"
-        onConfirm={() => {
-          setForceDeleteModalOpen(false);
-          executeDeleteWorktree(true);
-        }}
+        onConfirm={() => executeDeleteWorktree(true)}
         onCancel={() => {
           setForceDeleteModalOpen(false);
           setDeleteModalData(null);
         }}
+        loading={forceDeleting}
+        loadingLabel="Deleting..."
       />
 
       {/* Error Alert Modal */}

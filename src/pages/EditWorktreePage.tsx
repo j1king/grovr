@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
@@ -47,8 +48,11 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
   };
 
   const handleSave = async () => {
-    setSaving(true);
-    setError('');
+    // Force React to render loading state before starting operation
+    flushSync(() => {
+      setSaving(true);
+      setError('');
+    });
 
     try {
       // Rename branch if changed
@@ -82,11 +86,14 @@ export function EditWorktreePage({ worktree, onBack, onSaved }: EditWorktreePage
   const executeDelete = async (force: boolean = false) => {
     if (!repoPath) return;
 
-    if (force) {
-      setForceDeleting(true);
-    } else {
-      setDeleting(true);
-    }
+    // Force React to render loading state before starting operation
+    flushSync(() => {
+      if (force) {
+        setForceDeleting(true);
+      } else {
+        setDeleting(true);
+      }
+    });
 
     try {
       await api.removeWorktree(repoPath, worktree.path, force);
