@@ -1,12 +1,12 @@
 [package]
-name = "grovr-desktop"
+name = "grovr"
 version = "0.5.0"
 description = "Grovr - Git Worktree Manager Desktop App"
 authors = ["j1king"]
 edition = "2024"
 
 [lib]
-name = "grovr_desktop_lib"
+name = "grovr_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [[bin]]

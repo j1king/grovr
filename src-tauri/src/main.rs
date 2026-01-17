@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    grovr_desktop_lib::run()
+    grovr_lib::run()
 }

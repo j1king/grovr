@@ -73,7 +73,7 @@ cleanup() {
     print_status "Cleaning up..."
     rm -rf "$PREVIEW_ROOT"
     rm -rf "$TAURI_DATA_DIR"
-    rm -rf "${TMP_DIR}/grovr-desktop-test-${WORKTREE_NAME}"
+    rm -rf "${TMP_DIR}/grovr-test-${WORKTREE_NAME}"
     print_success "Cleanup complete"
 }
 
@@ -122,7 +122,7 @@ cmd_start() {
     "$SCRIPT_DIR/setup-test-repo.sh" "$WORKTREE_NAME" "$VITE_PORT" > "$PREVIEW_ROOT/logs/setup.log" 2>&1
 
     # Copy test settings to isolated Tauri data directory
-    TEST_ROOT="${TMP_DIR}/grovr-desktop-test-${WORKTREE_NAME}"
+    TEST_ROOT="${TMP_DIR}/grovr-test-${WORKTREE_NAME}"
     cp "$TEST_ROOT/config/settings.json" "$TAURI_DATA_DIR/settings.json"
 
     # 4. Start Tauri app in background

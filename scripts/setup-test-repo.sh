@@ -9,7 +9,7 @@
 #   ./scripts/setup-test-repo.sh [name] [port]
 #
 # Created structure:
-#   /tmp/grovr-desktop-test-{name}/
+#   /tmp/grovr-test-{name}/
 #   ├── sample-project/        (basic project with mixed worktrees)
 #   ├── empty-project/         (clean project, no worktrees)
 #   ├── full-project/          (all edge cases)
@@ -21,7 +21,7 @@ set -e
 NAME="${1:-$(date +%s)}"
 PORT="${2:-1420}"
 # Use realpath to get canonical path (macOS /tmp -> /private/tmp)
-BASE_DIR="$(cd /tmp && pwd -P)/grovr-desktop-test-${NAME}"
+BASE_DIR="$(cd /tmp && pwd -P)/grovr-test-${NAME}"
 
 # Remove if already exists
 if [ -d "$BASE_DIR" ]; then

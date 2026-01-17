@@ -7,8 +7,8 @@ Thanks for your interest in contributing to Grovr!
 1. Fork the repository
 2. Clone your fork
    ```bash
-   git clone https://github.com/YOUR_USERNAME/grovr-desktop.git
-   cd grovr-desktop
+   git clone https://github.com/YOUR_USERNAME/grovr.git
+   cd grovr
    ```
 3. Install dependencies
    ```bash
@@ -58,4 +58,4 @@ pnpm test:critical  # Critical path tests
 
 ## Reporting Issues
 
-Found a bug or have a feature request? Please [open an issue](https://github.com/j1king/grovr-desktop/issues/new).
+Found a bug or have a feature request? Please [open an issue](https://github.com/j1king/grovr/issues/new).

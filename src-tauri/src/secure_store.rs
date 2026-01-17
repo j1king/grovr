@@ -1,6 +1,6 @@
 use keyring::Entry;
 
-const SERVICE_NAME: &str = "grovr-desktop";
+const SERVICE_NAME: &str = "grovr";
 
 fn get_entry(key: &str) -> Result<Entry, String> {
     Entry::new(SERVICE_NAME, key).map_err(|e| e.to_string())

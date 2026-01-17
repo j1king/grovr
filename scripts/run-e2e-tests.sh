@@ -25,7 +25,7 @@ PORT="${3:-$((1420 + RANDOM % 100))}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-TEST_ROOT="/tmp/grovr-desktop-test-${NAME}"
+TEST_ROOT="/tmp/grovr-test-${NAME}"
 
 echo "=== Grovr Desktop E2E Test Runner ==="
 echo "Project: $PROJECT"

@@ -11,7 +11,7 @@ export interface TestContext {
 }
 
 function getTestContext(): TestContext {
-  const testRoot = process.env.TEST_ROOT || '/tmp/grovr-desktop-test-default'
+  const testRoot = process.env.TEST_ROOT || '/tmp/grovr-test-default'
   const port = parseInt(process.env.TEST_PORT || '1420', 10)
 
   return {

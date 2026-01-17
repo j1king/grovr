@@ -56,7 +56,7 @@ Delete worktrees with one click. Optionally delete the local branch too—no mor
 
 ## Installation
 
-**Download** the latest `.dmg` from [Releases](https://github.com/j1king/grovr-desktop/releases).
+**Download** the latest `.dmg` from [Releases](https://github.com/j1king/grovr/releases).
 
 **Requirements:** macOS 10.15+ and Git installed.
 
@@ -66,8 +66,8 @@ Delete worktrees with one click. Optionally delete the local branch too—no mor
 
 ```bash
 # Clone and install
-git clone https://github.com/j1king/grovr-desktop.git
-cd grovr-desktop
+git clone https://github.com/j1king/grovr.git
+cd grovr
 pnpm install
 
 # Run dev server
