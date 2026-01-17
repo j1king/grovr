@@ -700,7 +700,7 @@ export function WorktreeListPage({
                   <Button variant="outline" size="sm" onClick={handleIdeModalCancel}>
                     Cancel
                   </Button>
-                  <Button size="sm" onClick={handleIdeModalConfirm}>
+                  <Button size="sm" onClick={handleIdeModalConfirm} autoFocus>
                     Open
                   </Button>
                 </ModalFooter>
