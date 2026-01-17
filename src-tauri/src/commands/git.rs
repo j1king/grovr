@@ -99,6 +99,15 @@ pub fn create_worktree(
         return Err(String::from_utf8_lossy(&output.stderr).to_string());
     }
 
+    // When base_branch is a remote branch (e.g., origin/main), git automatically
+    // sets up the new branch to track that remote branch. This causes pushes to
+    // go to the base branch instead of origin/<new-branch>. Remove the upstream
+    // tracking to fix this behavior.
+    let _ = Command::new("git")
+        .args(["branch", "--unset-upstream", &branch_name])
+        .current_dir(&worktree_path)
+        .output();
+
     Ok(())
 }
 
