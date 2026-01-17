@@ -49,7 +49,7 @@ export function CreateWorktreePage({ project: initialProject, onBack, onWorktree
       const template = settings?.default_worktree_template || '{project}.worktrees/{branch}-{description}';
       const descriptionSlug = description
         .trim()
-        .replace(/[\/:*?"<>|\\&;'`$#%!()[\]{}]/g, '_')
+        .replace(/[\/:*?"<>|\\&;'`$#%!()[\]{}^~@+=,]/g, '_')
         .replace(/\s+/g, '-');
       const parentPath = selectedProject.repoPath.split('/').slice(0, -1).join('/');
       const projectName = selectedProject.repoPath.split('/').pop() || selectedProject.name;
