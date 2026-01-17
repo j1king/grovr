@@ -468,6 +468,9 @@ export function WorktreeListPage({
   const handleIdeModalConfirm = async () => {
     if (!ideModalData) return;
 
+    // Capture data before closing modal
+    const { path, preset, customCommand } = ideModalData;
+
     // Save "don't ask again" preference if checked
     if (dontAskAgain) {
       try {
@@ -480,9 +483,11 @@ export function WorktreeListPage({
       }
     }
 
+    // Close modal and clear data together to prevent empty modal flash
     setIdeModalOpen(false);
-    await executeOpenIde(ideModalData.path, ideModalData.preset, ideModalData.customCommand);
     setIdeModalData(null);
+
+    await executeOpenIde(path, preset, customCommand);
   };
 
   const handleIdeModalCancel = () => {
@@ -659,14 +664,7 @@ export function WorktreeListPage({
 
       {/* IDE Confirmation Modal */}
       <Modal open={ideModalOpen} onOpenChange={setIdeModalOpen}>
-        <ModalContent
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              handleIdeModalConfirm();
-            }
-          }}
-        >
+        <ModalContent>
           {ideModalData && (() => {
             const ideInfo = getIDEInfo(ideModalData.preset);
             return (
