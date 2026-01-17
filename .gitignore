@@ -16,8 +16,6 @@ dist-ssr
 .vscode
 .idea
 
-# Docs
-docs/
 .DS_Store
 *.suo
 *.ntvs*
