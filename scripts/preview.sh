@@ -162,6 +162,29 @@ cmd_start() {
         fi
     done
 
+    # Wait for Rust build to complete (app window to open)
+    print_status "Waiting for app to build and launch..."
+    wait_count=0
+    while ! pgrep -f "Grovr.app" >/dev/null 2>&1; do
+        sleep 2
+        wait_count=$((wait_count + 1))
+        # Show progress from log
+        if [ $((wait_count % 5)) -eq 0 ]; then
+            local progress=$(tail -1 "$LOG_FILE" 2>/dev/null | grep -oE '\[[0-9]+/[0-9]+\]' | tail -1)
+            if [ -n "$progress" ]; then
+                print_status "Building... $progress"
+            fi
+        fi
+        if [ $wait_count -ge 180 ]; then
+            print_error "Timeout waiting for app to launch (6 minutes)"
+            break
+        fi
+        # Check if process died
+        if ! kill -0 "$tauri_pid" 2>/dev/null; then
+            break
+        fi
+    done
+
     sleep 2
 
     if is_running; then
