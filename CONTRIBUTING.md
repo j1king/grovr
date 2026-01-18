@@ -56,6 +56,30 @@ pnpm test:critical  # Critical path tests
 3. Run tests to ensure nothing is broken
 4. Submit a PR with a clear description
 
+## Releasing (Maintainers)
+
+Releases are done locally using Claude Code skills:
+
+```bash
+/bump 0.6.0    # Update version in all config files, commit
+/build         # Build signed app with notarization
+/release       # Create GitHub release with artifacts
+```
+
+**Required environment variables:**
+
+```bash
+# Apple code signing
+export APPLE_SIGNING_IDENTITY="Developer ID Application: ..."
+export APPLE_ID="your@email.com"
+export APPLE_PASSWORD="app-specific-password"
+export APPLE_TEAM_ID="XXXXXXXXXX"
+
+# Tauri update signing
+export TAURI_SIGNING_PRIVATE_KEY="/path/to/key"
+export TAURI_SIGNING_PRIVATE_KEY_PASSWORD="password"
+```
+
 ## Reporting Issues
 
 Found a bug or have a feature request? Please [open an issue](https://github.com/j1king/grovr/issues/new).
