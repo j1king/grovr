@@ -5,10 +5,12 @@ import { ProjectSettingsPage } from '@/pages/ProjectSettingsPage';
 import { AddProjectPage } from '@/pages/AddProjectPage';
 import { CreateWorktreePage } from '@/pages/CreateWorktreePage';
 import { EditWorktreePage } from '@/pages/EditWorktreePage';
+import { UpdateDialog } from '@/components/ui/update-dialog';
 import { readText } from '@tauri-apps/plugin-clipboard-manager';
 import { onOpenUrl, getCurrent } from '@tauri-apps/plugin-deep-link';
 import * as api from '@/lib/api';
 import { parseDeepLink, findBestMatchingProject } from '@/lib/deep-link';
+import { checkForUpdates, type UpdateInfo } from '@/lib/updater';
 import type { Project, Worktree, IDEPreset, DeepLinkParams } from '@/types';
 import './index.css';
 
@@ -38,6 +40,8 @@ function App() {
   const [theme, setTheme] = useState<ThemeMode>('system');
   const [clipboardData, setClipboardData] = useState<ParsedClipboard | null>(null);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdateDialog, setShowUpdateDialog] = useState(false);
   const clipboardPatternsRef = useRef<string[]>(['\\[(?<issueNumber>[A-Z]+-\\d+)\\]\\s*(?<description>.+)']);
 
   // Load saved theme and clipboard pattern on startup
@@ -54,6 +58,20 @@ function App() {
       .catch(() => {
         applyTheme('system');
       });
+  }, []);
+
+  // Check for updates on startup
+  useEffect(() => {
+    const checkUpdates = async () => {
+      const update = await checkForUpdates();
+      if (update) {
+        setUpdateInfo(update);
+        setShowUpdateDialog(true);
+      }
+    };
+    // Delay update check to not block initial render
+    const timer = setTimeout(checkUpdates, 3000);
+    return () => clearTimeout(timer);
   }, []);
 
   // Listen for system theme changes when in system mode
@@ -274,6 +292,11 @@ function App() {
 
   return (
     <div className="app-container">
+      <UpdateDialog
+        updateInfo={updateInfo}
+        open={showUpdateDialog}
+        onOpenChange={setShowUpdateDialog}
+      />
       {page === 'worktrees' && (
         <WorktreeListPage
           key={refreshKey}

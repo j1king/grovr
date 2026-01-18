@@ -20,6 +20,8 @@
     "liquid-glass:default",
     "autostart:default",
     "global-shortcut:default",
-    "deep-link:default"
+    "deep-link:default",
+    "updater:default",
+    "process:default"
   ]
 }

@@ -50,6 +50,8 @@ window-vibrancy = "0.5"
 
 # Liquid Glass (macOS 26+)
 tauri-plugin-liquid-glass = "0.1"
+tauri-plugin-updater = { version = "2.9.0", features = ["rustls-tls"] }
+tauri-plugin-process = "2.3.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
