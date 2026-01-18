@@ -1,0 +1,34 @@
+name: Sync Homebrew Cask
+
+on:
+  push:
+    paths:
+      - 'grovr.cask.rb'
+    branches:
+      - main
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sync to homebrew-tap
+        env:
+          GH_TOKEN: ${{ secrets.TAP_PAT }}
+        run: |
+          CONTENT=$(base64 -w0 grovr.cask.rb)
+          SHA=$(gh api repos/j1king/homebrew-tap/contents/Casks/grovr.rb --jq .sha 2>/dev/null || echo "")
+
+          if [ -n "$SHA" ]; then
+            gh api repos/j1king/homebrew-tap/contents/Casks/grovr.rb \
+              --method PUT \
+              --field message="Sync grovr cask" \
+              --field content="$CONTENT" \
+              --field sha="$SHA"
+          else
+            gh api repos/j1king/homebrew-tap/contents/Casks/grovr.rb \
+              --method PUT \
+              --field message="Add grovr cask" \
+              --field content="$CONTENT"
+          fi
