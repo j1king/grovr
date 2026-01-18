@@ -202,6 +202,17 @@ export async function gitPull(worktreePath: string): Promise<void> {
   return invoke('git_pull', { worktreePath });
 }
 
+// ============ Git - Remote Info API ============
+
+export interface GitHubRemoteInfo {
+  owner: string;
+  repo: string;
+}
+
+export async function getGitHubRemoteInfo(repoPath: string): Promise<GitHubRemoteInfo | null> {
+  return invoke('get_github_remote_info', { repoPath });
+}
+
 // ============ IDE/File Operations API ============
 
 export async function openIde(path: string, idePreset: string, customCommand?: string): Promise<void> {

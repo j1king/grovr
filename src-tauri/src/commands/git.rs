@@ -430,6 +430,65 @@ pub async fn git_pull(worktree_path: String) -> Result<(), String> {
     .map_err(|e| format!("Task failed: {}", e))?
 }
 
+// ============ Remote Info ============
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GitHubRemoteInfo {
+    pub owner: String,
+    pub repo: String,
+}
+
+#[tauri::command]
+pub fn get_github_remote_info(repo_path: String) -> Result<Option<GitHubRemoteInfo>, String> {
+    let output = Command::new("git")
+        .args(["remote", "get-url", "origin"])
+        .current_dir(&repo_path)
+        .output()
+        .map_err(|e| format!("Failed to run git: {}", e))?;
+
+    if !output.status.success() {
+        return Ok(None);
+    }
+
+    let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    // Parse GitHub URL formats:
+    // SSH: git@github.com:owner/repo.git
+    // HTTPS: https://github.com/owner/repo.git
+    // HTTPS (no .git): https://github.com/owner/repo
+
+    let parsed = if url.starts_with("git@github.com:") {
+        // SSH format
+        url.strip_prefix("git@github.com:")
+            .and_then(|s| s.strip_suffix(".git").or(Some(s)))
+            .and_then(|s| {
+                let parts: Vec<&str> = s.split('/').collect();
+                if parts.len() == 2 {
+                    Some((parts[0].to_string(), parts[1].to_string()))
+                } else {
+                    None
+                }
+            })
+    } else if url.contains("github.com/") {
+        // HTTPS format
+        url.split("github.com/")
+            .nth(1)
+            .and_then(|s| s.strip_suffix(".git").or(Some(s)))
+            .and_then(|s| {
+                let parts: Vec<&str> = s.split('/').collect();
+                if parts.len() >= 2 {
+                    Some((parts[0].to_string(), parts[1].to_string()))
+                } else {
+                    None
+                }
+            })
+    } else {
+        None
+    };
+
+    Ok(parsed.map(|(owner, repo)| GitHubRemoteInfo { owner, repo }))
+}
+
 // ============ IDE/File Operations ============
 
 #[tauri::command]

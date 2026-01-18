@@ -79,19 +79,6 @@ interface ProjectWithIntegrations extends Omit<Project, 'worktrees'> {
   worktrees: WorktreeWithIntegrations[];
 }
 
-// Parse GitHub remote URL to get owner/repo
-function parseGitHubRemote(repoPath: string): { owner: string; repo: string } | null {
-  // Try to extract from path (e.g., /Users/x/projects/owner/repo)
-  // For now, just use the last two path components as a fallback
-  const parts = repoPath.split('/').filter(Boolean);
-  if (parts.length >= 2) {
-    return {
-      owner: parts[parts.length - 2],
-      repo: parts[parts.length - 1],
-    };
-  }
-  return null;
-}
 
 export function WorktreeListPage({
   onOpenSettings,
@@ -332,7 +319,7 @@ export function WorktreeListPage({
         projectsData.map(async (p) => {
           try {
             const worktrees = await api.getWorktrees(p.repo_path);
-            const remoteInfo = parseGitHubRemote(p.repo_path);
+            const remoteInfo = await api.getGitHubRemoteInfo(p.repo_path).catch(() => null);
 
             // Load memos and integration data for each worktree
             const worktreesWithData: WorktreeWithIntegrations[] = await Promise.all(
@@ -354,18 +341,14 @@ export function WorktreeListPage({
 
                 // Load Jira info if configured and issue number exists
                 if (jiraConfig?.host && result.issueNumber) {
-                  console.log('[Jira Debug] Fetching issue:', result.issueNumber, 'host:', jiraConfig.host, 'email:', jiraConfig.email);
                   try {
                     const jiraInfo = await api.fetchJiraIssue(result.issueNumber);
-                    console.log('[Jira Debug] Result for', result.issueNumber, ':', jiraInfo);
                     if (jiraInfo) {
                       result.jiraInfo = jiraInfo;
                     }
-                  } catch (err) {
-                    console.error('[Jira Debug] Failed to fetch Jira issue:', result.issueNumber, err);
+                  } catch {
+                    // Ignore - Jira fetch failed
                   }
-                } else {
-                  console.log('[Jira Debug] Skipping fetch - host:', jiraConfig?.host, 'issueNumber:', result.issueNumber);
                 }
 
                 // Load PR info if GitHub configured
@@ -376,8 +359,8 @@ export function WorktreeListPage({
                       // Get the most recent/relevant PR
                       result.prInfo = prs[0];
                     }
-                  } catch (err) {
-                    console.error('Failed to fetch PRs:', w.branch, err);
+                  } catch {
+                    // Ignore - PR fetch failed
                   }
                 }
 

@@ -21,8 +21,8 @@ use commands::projects::{add_project, get_projects, remove_project, reorder_proj
 use commands::git::{
     get_worktrees, create_worktree, create_worktree_existing_branch, remove_worktree,
     prune_worktrees, get_worktree_status, get_branches, get_current_branch, get_default_branch,
-    delete_branch, rename_branch, git_fetch, git_pull, open_ide, open_in_finder, open_terminal,
-    copy_paths_to_worktree,
+    delete_branch, rename_branch, git_fetch, git_pull, get_github_remote_info, open_ide,
+    open_in_finder, open_terminal, copy_paths_to_worktree,
 };
 use commands::integrations::{
     get_github_config, set_github_config, remove_github_config, validate_github_token,
@@ -138,6 +138,8 @@ pub fn run() {
             // Git - Operations
             git_fetch,
             git_pull,
+            // Git - Remote
+            get_github_remote_info,
             // IDE/File
             open_ide,
             open_in_finder,
