@@ -8,12 +8,18 @@
   A native Git worktree manager for macOS
 </p>
 
+<p align="center">
+  <a href="https://github.com/j1king/grovr/releases"><img src="https://img.shields.io/github/v/release/j1king/grovr" alt="Release"></a>
+  <a href="https://github.com/j1king/grovr/releases"><img src="https://img.shields.io/github/downloads/j1king/grovr/total" alt="Downloads"></a>
+  <img src="https://img.shields.io/badge/Tauri-v2-24C8D8?logo=tauri&logoColor=white" alt="Tauri v2">
+</p>
+
 ---
 
 Git worktrees let you work on multiple branches simultaneously without stashing or context switching. Grovr makes managing them effortless with a native macOS interface.
 
 <p align="center">
-  <img src="docs/main.png" alt="Grovr Screenshot" width="800">
+  <img src="docs/main.webp" alt="Grovr Screenshot" width="800">
 </p>
 
 ---
@@ -25,7 +31,7 @@ Git worktrees let you work on multiple branches simultaneously without stashing 
 Click any worktree to open it in your preferred editor. Supports VS Code, Cursor, Zed, JetBrains IDEs, and custom commands.
 
 <p align="center">
-  <img src="docs/feature-ide.gif" alt="IDE Launch" width="800">
+  <img src="docs/feature-ide.webp" alt="IDE Launch" width="800">
 </p>
 
 ### Search & Keyboard Navigation
@@ -33,7 +39,7 @@ Click any worktree to open it in your preferred editor. Supports VS Code, Cursor
 Type to search, use arrow keys to navigate, press Enter to launch. No mouse required.
 
 <p align="center">
-  <img src="docs/feature-search.gif" alt="Search & Navigation" width="800">
+  <img src="docs/feature-search.webp" alt="Search & Navigation" width="800">
 </p>
 
 ### Smart Worktree Creation
