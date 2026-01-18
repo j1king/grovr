@@ -317,13 +317,13 @@ export function WorktreeListPage({
   }, []);
 
   // Load integration data in background (non-blocking)
-  const loadIntegrationData = useCallback((
+  const loadIntegrationData = useCallback(async (
     projectsWithWorktrees: ProjectWithIntegrations[],
     githubConfig: { id?: string } | null,
     jiraConfig: { host?: string; email?: string } | null
   ) => {
     for (const project of projectsWithWorktrees) {
-      const remoteInfo = parseGitHubRemote(project.repoPath);
+      const remoteInfo = await api.getGitHubRemoteInfo(project.repoPath).catch(() => null);
 
       for (const worktree of project.worktrees) {
         // Load Jira info if configured and issue number exists

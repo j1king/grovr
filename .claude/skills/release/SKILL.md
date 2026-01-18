@@ -1,44 +1,56 @@
 ---
 name: release
 description: Release to GitHub with tag and artifacts
-allowed-tools: Bash(./.claude/skills/release/release.sh:*), Write, AskUserQuestion
+allowed-tools: Bash(./.claude/skills/release/release.sh:*), Bash(git log*), Write, AskUserQuestion
 ---
 
 # Release Skill
 
 Publishes a release to GitHub with tag and artifacts.
 
-## Prerequisites
+## Workflow (MUST follow this order)
 
-- Run `/bump` first (creates version bump commit)
-- Run `/build` first (creates signed artifacts)
+1. **Check prerequisites**: Run `./release.sh --check` to verify bump and build are done
+   - If check fails, STOP and tell user to run `/bump` or `/build` first
+   - Extract version from the check output (e.g., "0.7.0")
+2. **Generate release notes**: Run `git log v{PREVIOUS_VERSION}..HEAD --oneline` to get commits since last release
+3. **Format release notes**: Use the template below
+4. **Show and ask approval**: Use AskUserQuestion to show the generated notes and ask for approval
+   - Option 1: "Publish with these notes"
+   - Option 2: "Edit notes first" (user provides custom notes)
+5. **Publish**: Run `./release.sh --publish "notes"` with the approved notes
 
-## Usage
+## Release Notes Template
 
-```bash
-# Verify prerequisites only
-./release.sh --check
+```markdown
+## What's New in v{VERSION}
 
-# Publish release with notes
-./release.sh --publish "Release notes here"
+### ✨ Features
+- **Feature Name**: Brief description of the feature
 
-# Publish release with notes from file
-./release.sh --publish-file /path/to/notes.md
+### 🔧 Improvements
+- **Improvement Name**: Brief description of the improvement
+
+### 🐛 Bug Fixes
+- Fixed description of the bug fix
+
+---
+
+**Full Changelog**: https://github.com/j1king/grovr/compare/v{PREV}...v{VERSION}
 ```
 
-## What it does
+Notes:
+- Only include sections that have content (omit empty sections)
+- Use **bold** for feature/improvement names
+- Bug fixes don't need bold names, just describe what was fixed
 
-### `--check` mode
-1. Verifies last commit is version bump
-2. Verifies build artifacts exist
-3. Verifies versions match
-4. Reports readiness status
+## Script Reference
 
-### `--publish` mode
-1. Runs all checks
-2. Creates and pushes git tag
-3. Creates GitHub release with artifacts
-4. Uploads: DMG, tar.gz, latest.json
+```bash
+./release.sh --check                    # Verify prerequisites
+./release.sh --publish "Release notes"  # Publish with inline notes
+./release.sh --publish-file notes.md    # Publish with notes from file
+```
 
 ## Exit codes
 
