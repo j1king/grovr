@@ -240,7 +240,7 @@ html, body, #root {
 .worktree-col-description { @apply min-w-0 px-2 truncate text-muted-foreground text-xs; }
 .worktree-col-github { @apply w-[100px] flex justify-center; }
 .worktree-col-jira { @apply w-[100px] flex justify-center; }
-.worktree-col-actions { @apply relative w-[28px] flex justify-end; }
+.worktree-col-actions { @apply relative w-[28px] flex justify-end pr-1; }
 
 /* Integration badges (GitHub PR, Jira Issue) */
 .integration-badge-link {
