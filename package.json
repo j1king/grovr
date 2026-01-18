@@ -1,7 +1,7 @@
 {
   "name": "grovr",
   "private": true,
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Grovr - Git Worktree Manager Desktop App",
   "type": "module",
   "scripts": {
