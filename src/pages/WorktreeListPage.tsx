@@ -299,6 +299,58 @@ export function WorktreeListPage({
     }
   };
 
+  // Helper to update a single worktree with integration data
+  const updateWorktree = useCallback((repoPath: string, worktreePath: string, data: Partial<WorktreeWithIntegrations>) => {
+    setProjects(prev => prev.map(p =>
+      p.repoPath === repoPath
+        ? { ...p, worktrees: p.worktrees.map(w =>
+            w.path === worktreePath ? { ...w, ...data } : w
+          )}
+        : p
+    ));
+  }, []);
+
+  // Load integration data in background (non-blocking)
+  const loadIntegrationData = useCallback((
+    projectsWithWorktrees: ProjectWithIntegrations[],
+    githubConfig: { id?: string } | null,
+    jiraConfig: { host?: string; email?: string } | null
+  ) => {
+    for (const project of projectsWithWorktrees) {
+      const remoteInfo = parseGitHubRemote(project.repoPath);
+
+      for (const worktree of project.worktrees) {
+        // Load Jira info if configured and issue number exists
+        if (jiraConfig?.host && worktree.issueNumber) {
+          console.log('[Jira Debug] Fetching issue:', worktree.issueNumber, 'host:', jiraConfig.host);
+          api.fetchJiraIssue(worktree.issueNumber)
+            .then(jiraInfo => {
+              console.log('[Jira Debug] Result for', worktree.issueNumber, ':', jiraInfo);
+              if (jiraInfo) {
+                updateWorktree(project.repoPath, worktree.path, { jiraInfo });
+              }
+            })
+            .catch(err => {
+              console.error('[Jira Debug] Failed to fetch Jira issue:', worktree.issueNumber, err);
+            });
+        }
+
+        // Load PR info if GitHub configured
+        if (githubConfig?.id && remoteInfo && !worktree.isMain) {
+          api.fetchPullRequests(remoteInfo.owner, remoteInfo.repo, worktree.branch)
+            .then(prs => {
+              if (prs.length > 0) {
+                updateWorktree(project.repoPath, worktree.path, { prInfo: prs[0] });
+              }
+            })
+            .catch(err => {
+              console.error('Failed to fetch PRs:', worktree.branch, err);
+            });
+        }
+      }
+    }
+  }, [updateWorktree]);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -314,15 +366,15 @@ export function WorktreeListPage({
       setHasJira(!!jiraConfig?.host);
       setJiraHost(jiraConfig?.host || null);
 
-      // Load worktrees for each project
+      // Load worktrees with memos only (local data - fast)
       const projectsWithWorktrees: ProjectWithIntegrations[] = await Promise.all(
         projectsData.map(async (p) => {
           try {
             const worktrees = await api.getWorktrees(p.repo_path);
             const remoteInfo = await api.getGitHubRemoteInfo(p.repo_path).catch(() => null);
 
-            // Load memos and integration data for each worktree
-            const worktreesWithData: WorktreeWithIntegrations[] = await Promise.all(
+            // Load memos only (local data)
+            const worktreesWithMemos: WorktreeWithIntegrations[] = await Promise.all(
               worktrees.map(async (w) => {
                 const result: WorktreeWithIntegrations = {
                   path: w.path,
@@ -330,7 +382,7 @@ export function WorktreeListPage({
                   isMain: w.is_main,
                 };
 
-                // Load memo
+                // Load memo (local data)
                 try {
                   const memo = await api.getWorktreeMemo(w.path);
                   result.description = memo.description;
@@ -373,7 +425,7 @@ export function WorktreeListPage({
               repoPath: p.repo_path,
               defaultBaseBranch: p.default_base_branch,
               ide: p.ide?.preset as IDEPreset | undefined,
-              worktrees: worktreesWithData,
+              worktrees: worktreesWithMemos,
             };
           } catch {
             return {
@@ -392,9 +444,14 @@ export function WorktreeListPage({
       if (expandedProjects.size === 0) {
         onExpandedProjectsChange(new Set(projectsWithWorktrees.map((p) => p.repoPath)));
       }
+
+      // UI is now ready - stop loading indicator
+      setLoading(false);
+
+      // Load integration data in background (non-blocking)
+      loadIntegrationData(projectsWithWorktrees, githubConfig, jiraConfig);
     } catch (err) {
       console.error('Failed to load data:', err);
-    } finally {
       setLoading(false);
     }
   };
