@@ -56,6 +56,8 @@ import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { AlertModal } from '@/components/ui/alert-modal';
 import { getIDEInfo } from '@/lib/ide-config';
 import * as api from '@/lib/api';
+import { UpdateBadge } from '@/components/ui/update-badge';
+import type { UpdateInfo } from '@/lib/updater';
 import type { Project, Worktree, IDEPreset } from '@/types';
 import type { PullRequestInfo, JiraIssueInfo } from '@/lib/api';
 
@@ -67,6 +69,8 @@ interface WorktreeListPageProps {
   onEditWorktree: (worktree: Worktree, repoPath: string) => void;
   expandedProjects: Set<string>;
   onExpandedProjectsChange: (expanded: Set<string>) => void;
+  updateInfo: UpdateInfo | null;
+  onShowUpdate: () => void;
 }
 
 // Extended worktree with PR and Jira info
@@ -88,6 +92,8 @@ export function WorktreeListPage({
   onEditWorktree,
   expandedProjects,
   onExpandedProjectsChange,
+  updateInfo,
+  onShowUpdate,
 }: WorktreeListPageProps) {
   const [projects, setProjects] = useState<ProjectWithIntegrations[]>([]);
   const [loading, setLoading] = useState(true);
@@ -616,6 +622,7 @@ export function WorktreeListPage({
           Grovr{import.meta.env.VITE_PREVIEW_WORKTREE && ` (${import.meta.env.VITE_PREVIEW_WORKTREE})`}
         </span>
         <div className="flex items-center gap-1 no-drag">
+          <UpdateBadge updateInfo={updateInfo} onClick={onShowUpdate} />
           <button className="icon-button-sm" onClick={loadData} title="Refresh">
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           </button>

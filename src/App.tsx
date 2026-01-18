@@ -66,7 +66,6 @@ function App() {
       const update = await checkForUpdates();
       if (update) {
         setUpdateInfo(update);
-        setShowUpdateDialog(true);
       }
     };
     // Delay update check to not block initial render
@@ -307,6 +306,8 @@ function App() {
           onEditWorktree={handleEditWorktree}
           expandedProjects={expandedProjects}
           onExpandedProjectsChange={setExpandedProjects}
+          updateInfo={updateInfo}
+          onShowUpdate={() => setShowUpdateDialog(true)}
         />
       )}
       {page === 'settings' && (

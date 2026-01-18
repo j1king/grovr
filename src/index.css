@@ -887,7 +887,7 @@ html, body, #root {
 }
 
 .modal-header {
-  @apply flex items-center justify-center px-4 py-3;
+  @apply flex flex-col items-center justify-center px-4 py-3 gap-1;
 }
 
 .modal-header-bordered {

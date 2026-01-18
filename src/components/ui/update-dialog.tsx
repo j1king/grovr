@@ -1,4 +1,6 @@
 import { useState, useCallback } from 'react';
+import { openUrl } from '@tauri-apps/plugin-opener';
+import { ExternalLink } from 'lucide-react';
 import {
   Modal,
   ModalContent,
@@ -65,7 +67,7 @@ export function UpdateDialog({ updateInfo, open, onOpenChange }: UpdateDialogPro
     <Modal open={open} onOpenChange={handleClose}>
       <ModalContent>
         <ModalHeader>
-          <ModalTitle>Update Available</ModalTitle>
+          <ModalTitle>✨ Update Available</ModalTitle>
           <ModalDescription>
             A new version of Grovr is available.
           </ModalDescription>
@@ -73,22 +75,24 @@ export function UpdateDialog({ updateInfo, open, onOpenChange }: UpdateDialogPro
 
         <ModalBody>
           {updateInfo && (
-            <div className="space-y-3">
-              <div className="text-sm">
-                <span className="text-muted-foreground">Current version: </span>
-                <span>{updateInfo.currentVersion}</span>
-              </div>
-              <div className="text-sm">
-                <span className="text-muted-foreground">New version: </span>
-                <span className="font-medium">{updateInfo.version}</span>
-              </div>
-
-              {updateInfo.body && (
-                <div className="mt-4 p-3 bg-muted/50 rounded-lg text-sm max-h-32 overflow-y-auto">
-                  <div className="text-muted-foreground mb-1">Release notes:</div>
-                  <div className="whitespace-pre-wrap">{updateInfo.body}</div>
+            <div className="space-y-5 py-2">
+              <div className="flex items-center justify-center gap-4">
+                <div className="text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Current</div>
+                  <div className="text-lg font-mono text-muted-foreground">{updateInfo.currentVersion}</div>
                 </div>
-              )}
+                <div className="text-muted-foreground">→</div>
+                <div className="text-center">
+                  <div className="text-xs text-muted-foreground mb-1">New</div>
+                  <div className="text-lg font-mono font-semibold">{updateInfo.version}</div>
+                </div>
+              </div>
+              <button
+                className="flex items-center justify-center gap-1 w-full text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => openUrl(`https://github.com/j1king/grovr/releases/tag/v${updateInfo.version}`)}
+              >
+                Release notes <ExternalLink size={10} />
+              </button>
 
               {status === 'downloading' && (
                 <div className="mt-4 space-y-2">
