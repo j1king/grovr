@@ -56,7 +56,15 @@ Delete worktrees with one click. Optionally delete the local branch too—no mor
 
 ## Installation
 
-**Download** the latest `.dmg` from [Releases](https://github.com/j1king/grovr/releases).
+**Homebrew (Recommended)**
+
+```bash
+brew install --cask j1king/tap/grovr
+```
+
+**Manual Download**
+
+Download the latest `.dmg` from [Releases](https://github.com/j1king/grovr/releases).
 
 **Requirements:** macOS 10.15+ and Git installed.
 
