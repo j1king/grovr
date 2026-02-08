@@ -439,7 +439,7 @@ pub struct GitHubRemoteInfo {
 }
 
 #[tauri::command]
-pub fn get_github_remote_info(repo_path: String) -> Result<Option<GitHubRemoteInfo>, String> {
+pub fn get_github_remote_info(repo_path: String, github_host: Option<String>) -> Result<Option<GitHubRemoteInfo>, String> {
     let output = Command::new("git")
         .args(["remote", "get-url", "origin"])
         .current_dir(&repo_path)
@@ -452,41 +452,31 @@ pub fn get_github_remote_info(repo_path: String) -> Result<Option<GitHubRemoteIn
 
     let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
 
-    // Parse GitHub URL formats:
-    // SSH: git@github.com:owner/repo.git
-    // HTTPS: https://github.com/owner/repo.git
-    // HTTPS (no .git): https://github.com/owner/repo
+    let hosts: Vec<&str> = match github_host.as_deref() {
+        Some(h) if !h.is_empty() && h != "github.com" => vec!["github.com", h],
+        _ => vec!["github.com"],
+    };
 
-    let parsed = if url.starts_with("git@github.com:") {
-        // SSH format
-        url.strip_prefix("git@github.com:")
-            .and_then(|s| s.strip_suffix(".git").or(Some(s)))
-            .and_then(|s| {
-                let parts: Vec<&str> = s.split('/').collect();
-                if parts.len() == 2 {
-                    Some((parts[0].to_string(), parts[1].to_string()))
-                } else {
-                    None
-                }
-            })
-    } else if url.contains("github.com/") {
-        // HTTPS format
-        url.split("github.com/")
-            .nth(1)
-            .and_then(|s| s.strip_suffix(".git").or(Some(s)))
+    // Parse SSH (git@{host}:owner/repo.git) or HTTPS (https://{host}/owner/repo[.git])
+    let parsed = hosts.iter().find_map(|host| {
+        let path = if let Some(rest) = url.strip_prefix(&format!("git@{}:", host)) {
+            Some(rest)
+        } else {
+            url.split(&format!("{}/", host)).nth(1)
+        };
+
+        path.and_then(|s| s.strip_suffix(".git").or(Some(s)))
             .and_then(|s| {
                 let parts: Vec<&str> = s.split('/').collect();
                 if parts.len() >= 2 {
-                    Some((parts[0].to_string(), parts[1].to_string()))
+                    Some(GitHubRemoteInfo { owner: parts[0].to_string(), repo: parts[1].to_string() })
                 } else {
                     None
                 }
             })
-    } else {
-        None
-    };
+    });
 
-    Ok(parsed.map(|(owner, repo)| GitHubRemoteInfo { owner, repo }))
+    Ok(parsed)
 }
 
 // ============ IDE/File Operations ============

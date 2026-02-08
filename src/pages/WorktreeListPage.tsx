@@ -319,11 +319,11 @@ export function WorktreeListPage({
   // Load integration data in background (non-blocking)
   const loadIntegrationData = useCallback(async (
     projectsWithWorktrees: ProjectWithIntegrations[],
-    githubConfig: { id?: string } | null,
+    githubConfig: { id?: string; host?: string } | null,
     jiraConfig: { host?: string; email?: string } | null
   ) => {
     for (const project of projectsWithWorktrees) {
-      const remoteInfo = await api.getGitHubRemoteInfo(project.repoPath).catch(() => null);
+      const remoteInfo = await api.getGitHubRemoteInfo(project.repoPath, githubConfig?.host).catch(() => null);
 
       for (const worktree of project.worktrees) {
         // Load Jira info if configured and issue number exists
@@ -377,7 +377,7 @@ export function WorktreeListPage({
         projectsData.map(async (p) => {
           try {
             const worktrees = await api.getWorktrees(p.repo_path);
-            const remoteInfo = await api.getGitHubRemoteInfo(p.repo_path).catch(() => null);
+            const remoteInfo = await api.getGitHubRemoteInfo(p.repo_path, githubConfig?.host).catch(() => null);
 
             // Load memos only (local data)
             const worktreesWithMemos: WorktreeWithIntegrations[] = await Promise.all(

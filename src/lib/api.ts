@@ -215,8 +215,8 @@ export interface GitHubRemoteInfo {
   repo: string;
 }
 
-export async function getGitHubRemoteInfo(repoPath: string): Promise<GitHubRemoteInfo | null> {
-  return invoke('get_github_remote_info', { repoPath });
+export async function getGitHubRemoteInfo(repoPath: string, githubHost?: string): Promise<GitHubRemoteInfo | null> {
+  return invoke('get_github_remote_info', { repoPath, githubHost: githubHost ?? null });
 }
 
 // ============ IDE/File Operations API ============
