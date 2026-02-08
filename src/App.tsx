@@ -6,7 +6,6 @@ import { AddProjectPage } from '@/pages/AddProjectPage';
 import { CreateWorktreePage } from '@/pages/CreateWorktreePage';
 import { EditWorktreePage } from '@/pages/EditWorktreePage';
 import { UpdateDialog } from '@/components/ui/update-dialog';
-import { readText } from '@tauri-apps/plugin-clipboard-manager';
 import { onOpenUrl, getCurrent } from '@tauri-apps/plugin-deep-link';
 import * as api from '@/lib/api';
 import { parseDeepLink, findBestMatchingProject } from '@/lib/deep-link';
@@ -102,7 +101,7 @@ function App() {
         }
 
         try {
-          const text = await readText();
+          const text = await api.readClipboardText();
           if (!text || clipboardPatternsRef.current.length === 0) return;
 
           // Try each pattern until one matches

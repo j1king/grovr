@@ -24,6 +24,7 @@ use commands::git::{
     delete_branch, rename_branch, git_fetch, git_pull, get_github_remote_info, open_ide,
     open_in_finder, open_terminal, copy_paths_to_worktree,
 };
+use commands::clipboard::read_clipboard_text;
 use commands::integrations::{
     get_github_config, set_github_config, remove_github_config, validate_github_token,
     get_jira_config, set_jira_config, remove_jira_config, validate_jira_credentials,
@@ -157,6 +158,8 @@ pub fn run() {
             remove_jira_config,
             validate_jira_credentials,
             fetch_jira_issue,
+            // Clipboard
+            read_clipboard_text,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

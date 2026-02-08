@@ -53,6 +53,12 @@ export interface BackendAppSettings {
   global_shortcut?: string;
 }
 
+// ============ Clipboard API ============
+
+export async function readClipboardText(): Promise<string> {
+  return invoke('read_clipboard_text');
+}
+
 // ============ Settings API ============
 
 export async function getSettings(): Promise<BackendAppSettings> {

@@ -35,6 +35,9 @@ tauri-plugin-autostart = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-deep-link = "2"
 
+# Clipboard (main-thread-safe reading)
+arboard = "3"
+
 # Git operations (Phase 4)
 git2 = "0.19"
 
