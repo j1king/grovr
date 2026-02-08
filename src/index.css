@@ -238,9 +238,9 @@ html, body, #root {
 
 .worktree-col-branch { @apply flex items-center gap-1.5 pr-3; }
 .worktree-col-description { @apply min-w-0 px-2 truncate text-muted-foreground text-xs; }
-.worktree-col-github { @apply w-[100px] flex justify-center; }
-.worktree-col-jira { @apply w-[100px] flex justify-center; }
-.worktree-col-actions { @apply relative w-[28px] flex justify-end pr-1; }
+.worktree-col-github { @apply w-[80px] flex justify-center; }
+.worktree-col-jira { @apply w-[80px] flex justify-center; }
+.worktree-col-actions { @apply relative w-[44px] flex justify-end pr-2; }
 
 /* Integration badges (GitHub PR, Jira Issue) */
 .integration-badge-link {

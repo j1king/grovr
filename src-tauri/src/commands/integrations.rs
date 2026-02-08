@@ -297,13 +297,20 @@ pub async fn fetch_pull_requests(
                 .map(|s| s.to_string())
         });
         let token = secure_store::get_secret(&token_key)?.unwrap_or_default();
+        if token.is_empty() {
+            eprintln!("[GitHub] Warning: No token found in secure storage for key: {}", token_key);
+        }
         (base_url, token)
     };
 
+    let url = format!("{}/repos/{}/{}/pulls", base_url, owner, repo);
+    let head_filter = format!("{}:{}", owner, branch);
+    eprintln!("[GitHub] Fetching PRs: {} head={}", url, head_filter);
+
     let client = Client::new();
     let response = client
-        .get(format!("{}/repos/{}/{}/pulls", base_url, owner, repo))
-        .query(&[("head", format!("{}:{}", owner, branch)), ("state", "all".to_string())])
+        .get(&url)
+        .query(&[("head", head_filter), ("state", "all".to_string())])
         .header("Authorization", format!("Bearer {}", token))
         .header("User-Agent", "Grovr-Desktop")
         .header("Accept", "application/vnd.github+json")
@@ -312,7 +319,10 @@ pub async fn fetch_pull_requests(
         .map_err(|e| e.to_string())?;
 
     if !response.status().is_success() {
-        return Ok(vec![]);
+        let status = response.status().as_u16();
+        let body = response.text().await.unwrap_or_default();
+        eprintln!("[GitHub] API error ({}): {}", status, body);
+        return Err(format!("GitHub API error ({}): {}", status, body));
     }
 
     #[derive(Deserialize)]
@@ -439,9 +449,10 @@ pub async fn fetch_jira_issue(
     eprintln!("[Jira] Response status: {}", response.status());
 
     if !response.status().is_success() {
+        let status = response.status().as_u16();
         let body = response.text().await.unwrap_or_default();
-        eprintln!("[Jira] Error response body: {}", body);
-        return Ok(None);
+        eprintln!("[Jira] API error ({}): {}", status, body);
+        return Err(format!("Jira API error ({}): {}", status, body));
     }
 
     #[derive(Deserialize)]

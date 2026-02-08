@@ -955,9 +955,9 @@ function ProjectCard({
             gridTemplateColumns: [
               'auto',
               showDescription ? 'minmax(0, 1fr)' : null,
-              showGitHub ? '100px' : null,
-              showJira ? '100px' : null,
-              '28px',
+              showGitHub ? '80px' : null,
+              showJira ? '80px' : null,
+              '44px',
             ].filter(Boolean).join(' '),
           }}
         >
