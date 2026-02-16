@@ -114,6 +114,7 @@ export interface DeepLinkParams {
   project?: string; // Project name (fuzzy match)
   issue?: string; // Issue number
   description?: string;
+  branch?: string; // Pre-filled branch name
 }
 
 export interface ParsedDeepLink {

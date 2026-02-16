@@ -40,6 +40,10 @@ export function parseDeepLink(url: string): ParsedDeepLink {
       params.description = searchParams.get('description')!;
     }
 
+    if (searchParams.has('branch')) {
+      params.branch = searchParams.get('branch')!;
+    }
+
     return { valid: true, params };
   } catch (err) {
     return { valid: false, error: `Failed to parse URL: ${err}` };
@@ -86,6 +90,7 @@ export function generateCreateWorktreeLink(options?: {
   project?: string;
   issue?: string;
   description?: string;
+  branch?: string;
 }): string {
   const params = new URLSearchParams();
 
@@ -97,6 +102,9 @@ export function generateCreateWorktreeLink(options?: {
   }
   if (options?.description) {
     params.set('description', options.description);
+  }
+  if (options?.branch) {
+    params.set('branch', options.branch);
   }
 
   const queryString = params.toString();

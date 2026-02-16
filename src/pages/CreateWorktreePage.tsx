@@ -9,6 +9,7 @@ import type { Project, IDEPreset } from '@/types';
 interface ParsedClipboard {
   issueNumber: string;
   description: string;
+  branchName?: string;
 }
 
 interface CreateWorktreePageProps {
@@ -23,7 +24,7 @@ export function CreateWorktreePage({ project: initialProject, onBack, onWorktree
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProject, setSelectedProject] = useState<Project>(initialProject);
   const [issueNumber, setIssueNumber] = useState(initialData?.issueNumber || '');
-  const [branchName, setBranchName] = useState(initialData?.issueNumber || '');
+  const [branchName, setBranchName] = useState(initialData?.branchName || initialData?.issueNumber || '');
   const [description, setDescription] = useState(initialData?.description || '');
   const [baseBranch, setBaseBranch] = useState('');
   const [worktreePath, setWorktreePath] = useState('');

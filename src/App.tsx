@@ -19,6 +19,7 @@ type ThemeMode = 'system' | 'light' | 'dark';
 interface ParsedClipboard {
   issueNumber: string;
   description: string;
+  branchName?: string;
 }
 
 function applyTheme(theme: ThemeMode) {
@@ -229,10 +230,11 @@ function App() {
           worktrees: [],
         });
 
-        if (params.issue || params.description) {
+        if (params.issue || params.description || params.branch) {
           setClipboardData({
             issueNumber: params.issue || '',
             description: params.description || '',
+            branchName: params.branch,
           });
         }
 
