@@ -7,7 +7,6 @@ cask "grovr" do
   desc "Desktop Git worktree manager"
   homepage "https://github.com/j1king/grovr"
 
-  depends_on macos: ">= :catalina"
   depends_on arch: :arm64
   auto_updates true
 
