@@ -9,13 +9,15 @@ use window_vibrancy::apply_mica;
 mod commands;
 mod secure_store;
 mod types;
+#[cfg(target_os = "macos")]
+mod terminal;
 
 use commands::settings::{
     get_settings, get_worktree_memo, init_settings, register_global_shortcut,
     set_clipboard_parse_patterns, set_copy_paths, set_default_worktree_template,
     set_fetch_before_create, set_global_shortcut, set_ide, set_last_used_project,
     set_launch_at_startup, set_onboarding_completed, set_refresh_interval_minutes,
-    set_skip_open_ide_confirm, set_theme, set_worktree_memo,
+    set_skip_open_ide_confirm, set_theme, set_terminal, set_worktree_memo,
 };
 use commands::projects::{add_project, get_projects, remove_project, reorder_projects, update_project};
 use commands::git::{
@@ -104,6 +106,7 @@ pub fn run() {
             // Settings
             get_settings,
             set_ide,
+            set_terminal,
             set_theme,
             set_launch_at_startup,
             set_default_worktree_template,

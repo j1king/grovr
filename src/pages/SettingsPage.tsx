@@ -13,6 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { GeneralSettings } from './settings/GeneralSettings';
 import { AppearanceSettings } from './settings/AppearanceSettings';
 import { IDESettings } from './settings/IDESettings';
+import { TerminalSettings } from './settings/TerminalSettings';
 import { WorktreeSettings } from './settings/WorktreeSettings';
 import { GitHubSettings } from './settings/GitHubSettings';
 import { JiraSettings } from './settings/JiraSettings';
@@ -26,6 +27,7 @@ const categories: { id: SettingsCategory; label: string; icon: React.ReactNode }
   { id: 'general', label: 'General', icon: <Settings size={14} /> },
   { id: 'appearance', label: 'Appearance', icon: <Palette size={14} /> },
   { id: 'ide', label: 'IDE', icon: <Terminal size={14} /> },
+  { id: 'terminal', label: 'Terminal', icon: <Terminal size={14} /> },
   { id: 'worktree', label: 'Worktree', icon: <GitBranch size={14} /> },
   { id: 'github', label: 'GitHub', icon: <Github size={14} /> },
   { id: 'jira', label: 'Jira', icon: <Ticket size={14} /> },
@@ -42,6 +44,8 @@ export function SettingsPage({ onBack }: SettingsPageProps) {
         return <AppearanceSettings />;
       case 'ide':
         return <IDESettings />;
+      case 'terminal':
+        return <TerminalSettings />;
       case 'worktree':
         return <WorktreeSettings />;
       case 'github':

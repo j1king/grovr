@@ -66,10 +66,11 @@ export const mockData = {
 // Script to inject Tauri mock into the page
 function getTauriMockScript(data: typeof mockData) {
   return `
+    const mockData = ${JSON.stringify(data)};
+    window.__TAURI_OS_PLUGIN_INTERNALS__ = { platform: 'macos' };
     window.__TAURI_INTERNALS__ = {
       invoke: async (cmd, args) => {
         console.log('[Tauri Mock] invoke:', cmd, args);
-        const mockData = ${JSON.stringify(data)};
 
         switch (cmd) {
           case 'get_settings':
@@ -86,6 +87,9 @@ function getTauriMockScript(data: typeof mockData) {
             return null;
           case 'get_worktree_memo':
             return { description: null, issue_number: null };
+          case 'set_terminal':
+            mockData.settings.terminal = args.terminal;
+            return null;
           case 'set_theme':
           case 'set_ide':
           case 'set_skip_open_ide_confirm':

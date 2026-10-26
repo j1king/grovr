@@ -104,7 +104,7 @@ export interface JiraIssue {
 }
 
 // Navigation types
-export type SettingsCategory = 'general' | 'appearance' | 'ide' | 'worktree' | 'github' | 'jira';
+export type SettingsCategory = 'general' | 'appearance' | 'ide' | 'terminal' | 'worktree' | 'github' | 'jira';
 
 // Deep link types
 export type DeepLinkRoute = 'create-worktree' | 'settings';

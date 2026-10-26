@@ -564,13 +564,21 @@ pub fn open_in_finder(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn open_terminal(path: String) -> Result<(), String> {
+pub fn open_terminal(
+    path: String,
+    _state: tauri::State<crate::commands::settings::SettingsState>,
+) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        Command::new("open")
-            .args(["-a", "Terminal", &path])
-            .spawn()
-            .map_err(|e| format!("Failed to open Terminal: {}", e))?;
+        let terminal_app = {
+            let settings = _state.0.lock().map_err(|e| e.to_string())?;
+            settings
+                .terminal
+                .as_ref()
+                .map(|terminal| terminal.app.clone())
+                .unwrap_or_else(|| "Terminal".to_string())
+        };
+        crate::terminal::open(&terminal_app, &path)?;
     }
 
     #[cfg(target_os = "windows")]

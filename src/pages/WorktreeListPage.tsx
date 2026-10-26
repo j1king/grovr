@@ -555,6 +555,8 @@ export function WorktreeListPage({
       await api.openTerminal(path);
     } catch (err) {
       console.error('Failed to open Terminal:', err);
+      setErrorModalMessage(String(err));
+      setErrorModalOpen(true);
     }
   };
 

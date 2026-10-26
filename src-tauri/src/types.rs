@@ -10,6 +10,11 @@ pub struct IdeConfig {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TerminalConfig {
+    pub app: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProjectConfig {
     pub name: String,
     pub repo_path: String,
@@ -88,6 +93,8 @@ pub struct WorktreeMemo {
 pub struct AppSettings {
     #[serde(default)]
     pub ide: Option<IdeConfig>,
+    #[serde(default)]
+    pub terminal: Option<TerminalConfig>,
     #[serde(default = "default_theme")]
     pub theme: String,
     #[serde(default)]

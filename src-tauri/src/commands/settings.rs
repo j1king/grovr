@@ -1,4 +1,4 @@
-use crate::types::{AppSettings, IdeConfig, WorktreeMemo};
+use crate::types::{AppSettings, IdeConfig, TerminalConfig, WorktreeMemo};
 use tauri::{Manager, State};
 #[cfg(not(target_os = "macos"))]
 use tauri_plugin_autostart::ManagerExt;
@@ -48,6 +48,26 @@ pub fn set_ide(
     let mut settings = state.0.lock().map_err(|e| e.to_string())?;
     settings.ide = Some(ide);
     save_settings(&app, &settings)
+}
+
+#[tauri::command]
+pub fn set_terminal(
+    app: tauri::AppHandle,
+    state: State<SettingsState>,
+    terminal: TerminalConfig,
+) -> Result<(), String> {
+    let terminal_app = terminal.app.trim();
+    if terminal_app.is_empty() {
+        return Err("Enter a terminal application name or path".to_string());
+    }
+    let mut settings = state.0.lock().map_err(|e| e.to_string())?;
+    let mut updated = settings.clone();
+    updated.terminal = Some(TerminalConfig {
+        app: terminal_app.to_string(),
+    });
+    save_settings(&app, &updated)?;
+    *settings = updated;
+    Ok(())
 }
 
 #[tauri::command]
