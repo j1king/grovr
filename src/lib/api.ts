@@ -35,8 +35,13 @@ export interface BackendProjectConfig {
   ide?: BackendIdeConfig;
 }
 
+export interface BackendTerminalConfig {
+  app: string;
+}
+
 export interface BackendAppSettings {
   ide?: BackendIdeConfig;
+  terminal?: BackendTerminalConfig;
   theme: string;
   launch_at_startup?: boolean;
   default_worktree_template?: string;
@@ -67,6 +72,10 @@ export async function getSettings(): Promise<BackendAppSettings> {
 
 export async function setIde(ide: BackendIdeConfig): Promise<void> {
   return invoke('set_ide', { ide });
+}
+
+export async function setTerminal(terminal: BackendTerminalConfig): Promise<void> {
+  return invoke('set_terminal', { terminal });
 }
 
 export async function setTheme(theme: string): Promise<void> {

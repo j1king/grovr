@@ -34,6 +34,10 @@ Click any worktree to open it in your preferred editor. Supports VS Code, Cursor
   <img src="docs/feature-ide.webp" alt="IDE Launch" width="800">
 </p>
 
+### Preferred Terminal
+
+Choose Terminal, iTerm2, Warp, or another installed macOS app in **Settings → Terminal**. The worktree's **Open Terminal** action opens its folder in the selected app.
+
 ### Search & Keyboard Navigation
 
 Type to search, use arrow keys to navigate, press Enter to launch. No mouse required.
